@@ -61,7 +61,7 @@ async fn handle(socket: WebSocket, state: AppState) {
     while let Some(Ok(frame)) = stream.next().await {
         let Message::Text(text) = frame else { continue };
         let reply = match serde_json::from_str::<ClientMessage>(&text) {
-            Ok(msg) => dispatch(msg),
+            Ok(msg) => dispatch(msg, &state, &device_id).await,
             Err(e) => ServerMessage::Error {
                 message: format!("invalid message: {e}"),
             },
@@ -88,20 +88,27 @@ async fn authenticate(stream: &mut futures_util::stream::SplitStream<WebSocket>)
     }
 }
 
-fn dispatch(msg: ClientMessage) -> ServerMessage {
-    match msg {
-        ClientMessage::Ping => ServerMessage::Pong,
-        ClientMessage::Hello { .. } => ServerMessage::Error {
-            message: "already authenticated".into(),
-        },
-        ClientMessage::Play { request_id, .. }
-        | ClientMessage::Stop { request_id, .. }
-        | ClientMessage::StopAll { request_id }
-        | ClientMessage::RunAction { request_id, .. } => ServerMessage::Ack {
-            request_id,
-            ok: false,
-            error: Some("not implemented yet".into()),
-        },
+async fn dispatch(msg: ClientMessage, state: &AppState, device_id: &str) -> ServerMessage {
+    let (request_id, result) = match msg {
+        ClientMessage::Ping => return ServerMessage::Pong,
+        ClientMessage::Hello { .. } => {
+            return ServerMessage::Error { message: "already authenticated".into() };
+        }
+        ClientMessage::Play { request_id, sound_id } => {
+            (request_id, state.audio.play(sound_id, device_id.to_string()).await)
+        }
+        ClientMessage::Stop { request_id, sound_id } => {
+            (request_id, state.audio.stop(sound_id).await)
+        }
+        ClientMessage::StopAll { request_id } => (request_id, state.audio.stop_all().await),
+        ClientMessage::RunAction { request_id, action_id: _ } => {
+            (request_id, Err("actions are not implemented yet".to_string()))
+        }
+    };
+    ServerMessage::Ack {
+        request_id,
+        ok: result.is_ok(),
+        error: result.err(),
     }
 }
 

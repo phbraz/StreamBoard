@@ -78,7 +78,13 @@ export function useSoundboard(token: string) {
     return () => {
       disposed = true
       clearTimeout(retry)
-      socket.current?.close()
+      const ws = socket.current
+      socket.current = null
+      if (ws) {
+        // The close event fires later; it must not clobber the next effect's socket.
+        ws.onopen = ws.onmessage = ws.onclose = null
+        ws.close()
+      }
     }
   }, [token])
 

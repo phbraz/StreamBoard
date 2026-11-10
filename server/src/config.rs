@@ -24,6 +24,14 @@ pub struct AudioConfig {
     pub output: String,
     pub master_volume: f32,
     pub max_upload_mb: u64,
+    /// Server-side sound library. Defaults to `~/.local/share/soundboard/sounds`.
+    pub sounds_dir: Option<PathBuf>,
+}
+
+impl AudioConfig {
+    pub fn sounds_dir(&self) -> PathBuf {
+        self.sounds_dir.clone().unwrap_or_else(|| data_dir().join("sounds"))
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -54,9 +62,10 @@ impl Default for ServerConfig {
 impl Default for AudioConfig {
     fn default() -> Self {
         Self {
-            output: "soundboard_sink".into(),
+            output: "default".into(),
             master_volume: 1.0,
             max_upload_mb: 20,
+            sounds_dir: None,
         }
     }
 }

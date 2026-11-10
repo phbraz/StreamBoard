@@ -72,6 +72,23 @@ pub struct ServerState {
 #[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
+pub struct SoundInfo {
+    pub id: String,
+    pub label: String,
+    pub duration_ms: u32,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct SoundList {
+    pub library_dir: String,
+    pub sounds: Vec<SoundInfo>,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct PlayingSound {
     pub sound_id: String,
     pub device_id: String,

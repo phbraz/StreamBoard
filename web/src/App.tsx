@@ -1,14 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSoundboard, type ConnectionStatus } from './hooks/useSoundboard'
-
-// Placeholder board until per-device boards land (milestone 2).
-const DEMO_BUTTONS = [
-  { id: 'b1', label: 'Sound 1', kind: 'sound', targetId: 'demo-1' },
-  { id: 'b2', label: 'Sound 2', kind: 'sound', targetId: 'demo-2' },
-  { id: 'b3', label: 'Sound 3', kind: 'sound', targetId: 'demo-3' },
-  { id: 'b4', label: 'Mic', kind: 'action', targetId: 'mic-toggle' },
-  { id: 'b5', label: 'Action 2', kind: 'action', targetId: 'demo-action' },
-] as const
+import type { SoundInfo, SoundList } from './protocol'
 
 const STATUS_COLOR: Record<ConnectionStatus, string> = {
   open: 'bg-ok',
@@ -18,12 +10,26 @@ const STATUS_COLOR: Record<ConnectionStatus, string> = {
 
 export default function App() {
   const sb = useSoundboard('dev')
+  const [library, setLibrary] = useState<SoundList | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [lastResult, setLastResult] = useState<string | null>(null)
 
-  const press = async (button: (typeof DEMO_BUTTONS)[number]) => {
-    const ack =
-      button.kind === 'sound' ? await sb.play(button.targetId) : await sb.runAction(button.targetId)
-    setLastResult(ack.ok ? `${button.label}: ok` : `${button.label}: ${ack.error ?? 'failed'}`)
+  useEffect(() => {
+    if (sb.status !== 'open') return
+    fetch('/api/sounds')
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))))
+      .then((list: SoundList) => {
+        setLibrary(list)
+        setLoadError(null)
+      })
+      .catch((e: Error) => setLoadError(e.message))
+  }, [sb.status])
+
+  const playing = new Set(sb.state.playing.map((p) => p.soundId))
+
+  const press = async (sound: SoundInfo) => {
+    const ack = await sb.play(sound.id)
+    setLastResult(ack.ok ? `Playing ${sound.label}` : `${sound.label}: ${ack.error ?? 'failed'}`)
   }
 
   return (
@@ -34,19 +40,29 @@ export default function App() {
           <span className={`size-2.5 rounded-full ${STATUS_COLOR[sb.status]}`} />
           {sb.status}
           {sb.deviceId && <span>· {sb.deviceId}</span>}
-          <span>· mic {sb.state.micMuted ? 'muted' : 'live'}</span>
         </div>
       </header>
 
+      {loadError && <p className="text-sm text-accent">Couldn't load sounds: {loadError}</p>}
+
+      {library && library.sounds.length === 0 && (
+        <p className="text-sm text-board-muted">
+          No sounds yet. Copy mp3, ogg, wav or flac files into{' '}
+          <code className="text-board-fg">{library.libraryDir}</code> and restart the server.
+        </p>
+      )}
+
       <section className="grid grid-cols-3 gap-board-gap sm:grid-cols-4">
-        {DEMO_BUTTONS.map((button) => (
+        {library?.sounds.map((sound) => (
           <button
-            key={button.id}
+            key={sound.id}
             type="button"
-            onClick={() => press(button)}
-            className="aspect-square rounded-button border border-button-border bg-button p-2 text-sm font-medium transition hover:bg-button-hover active:scale-95"
+            onClick={() => press(sound)}
+            className={`aspect-square rounded-button border bg-button p-2 text-sm font-medium capitalize transition hover:bg-button-hover active:scale-95 ${
+              playing.has(sound.id) ? 'border-accent ring-2 ring-accent' : 'border-button-border'
+            }`}
           >
-            {button.label}
+            {sound.label}
           </button>
         ))}
       </section>

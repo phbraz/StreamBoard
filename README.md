@@ -28,6 +28,26 @@ Regenerate the TypeScript protocol types after changing `server/src/protocol.rs`
 cargo test -p soundboard-server
 ```
 
+## Sounds
+
+Put mp3, ogg, wav, flac or m4a files in `~/.local/share/soundboard/sounds`
+(or set `audio.sounds_dir` in `~/.config/soundboard/config.toml`) and restart the server.
+
+## Reaching it from other devices
+
+1. Allow the ports from the LAN (ufw is active on Omarchy):
+   ```sh
+   sudo ufw allow from 192.168.1.0/24 to any port 5173 proto tcp comment 'soundboard dev'
+   sudo ufw allow from 192.168.1.0/24 to any port 7878 proto tcp comment 'soundboard'
+   ```
+2. On Android, Chrome and Brave need the **Nearby devices** / **Local network**
+   permission (Settings → Apps → Chrome → Permissions), then a browser restart.
+   Without it, requests to LAN addresses are silently dropped. The stock browser
+   usually works without it.
+3. If it still fails: turn off "Always use secure connections" (Chrome) or
+   "Upgrade connections to HTTPS" (Brave), pause VPN/ad-block DNS apps, and
+   check the router for AP/client isolation.
+
 ## Production build
 
 ```sh
