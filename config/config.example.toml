@@ -1,0 +1,13 @@
+# Copy to ~/.config/soundboard/config.toml. Every key is optional.
+
+[server]
+bind = "0.0.0.0:7878"
+mdns = true                        # advertise soundboard.local
+
+[audio]
+output = "soundboard_sink"         # PipeWire node to play into; "default" for speakers
+master_volume = 1.0
+max_upload_mb = 20
+
+[mic]
+source = "@DEFAULT_AUDIO_SOURCE@"  # the real mic, not the virtual one

@@ -1,0 +1,22 @@
+# Copy to ~/.config/soundboard/actions.toml.
+# Clients can only trigger these by id; they can never send commands.
+
+[[action]]
+id = "mic-toggle"
+label = "Mic"
+kind = "mic"
+op = "toggle"                      # toggle | mute | unmute
+
+[[action]]
+id = "discord-deafen"
+label = "Deafen"
+kind = "keypress"
+keys = "ctrl+shift+d"
+backend = "ydotool"                # needs ydotoold running and /dev/uinput access
+
+[[action]]
+id = "obs-record"
+label = "Record"
+kind = "hyprctl_shortcut"
+keys = "CTRL SHIFT, R"
+window = "class:com.obsproject.Studio"

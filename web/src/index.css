@@ -1,0 +1,28 @@
+@import 'tailwindcss';
+
+/* Board theme: restyle the whole board from here. */
+@theme {
+  --color-board-bg: #0f0f10;
+  --color-board-fg: #e7e7ea;
+  --color-board-muted: #8a8a93;
+  --color-button: #1c1c1f;
+  --color-button-hover: #26262a;
+  --color-button-border: #3a3a40;
+  --color-accent: #e11d48;
+  --color-ok: #22c55e;
+  --color-warn: #f59e0b;
+
+  --radius-button: 0.875rem;
+  --spacing-board-gap: 0.75rem;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-board-bg text-board-fg antialiased;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
