@@ -1,22 +1,33 @@
+mod api;
 mod audio;
 mod config;
+mod hotkey;
+mod library;
 mod protocol;
 mod static_files;
+mod store;
 mod ws;
 
-use std::{path::PathBuf, sync::Arc};
+use std::{path::PathBuf, sync::Arc, time::Duration};
 
-use axum::{Json, Router, extract::State, routing::get};
+use axum::{
+    Json, Router,
+    extract::DefaultBodyLimit,
+    routing::{get, patch, post},
+};
 use serde_json::json;
-use tokio::sync::{RwLock, broadcast};
+use tokio::sync::{Mutex, RwLock, broadcast};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::EnvFilter;
 
 use crate::{
     audio::AudioHandle,
     config::Config,
-    protocol::{ServerMessage, ServerState, SoundList},
+    protocol::{ServerMessage, ServerState},
+    store::Store,
 };
+
+const LIBRARY_SCAN_INTERVAL: Duration = Duration::from_secs(3);
 
 #[derive(Clone)]
 pub struct AppState {
@@ -24,7 +35,7 @@ pub struct AppState {
     pub server_state: Arc<RwLock<ServerState>>,
     pub broadcast: broadcast::Sender<ServerMessage>,
     pub audio: AudioHandle,
-    pub sounds: Arc<SoundList>,
+    pub store: Arc<Mutex<Store>>,
 }
 
 #[tokio::main]
@@ -37,7 +48,8 @@ async fn main() -> anyhow::Result<()> {
 
     let config_path = parse_config_arg();
     let config = Config::load(config_path.as_deref())?;
-    tracing::info!(data_dir = %config::data_dir().display(), "starting");
+    let data_dir = config::data_dir();
+    tracing::info!(data_dir = %data_dir.display(), "starting");
     if config.audio.output != "default" {
         tracing::warn!(
             output = %config.audio.output,
@@ -45,12 +57,7 @@ async fn main() -> anyhow::Result<()> {
         );
     }
 
-    let sounds_dir = config.audio.sounds_dir();
-    let library = audio::load_library(&sounds_dir)?;
-    let sounds = Arc::new(SoundList {
-        library_dir: sounds_dir.display().to_string(),
-        sounds: library.sounds.clone(),
-    });
+    let store = Store::open(config.audio.sounds_dir(), &data_dir, config.audio.max_upload_mb)?;
 
     let (broadcast, _) = broadcast::channel(64);
     let server_state = Arc::new(RwLock::new(ServerState::default()));
@@ -58,24 +65,45 @@ async fn main() -> anyhow::Result<()> {
     let audio = {
         let server_state = server_state.clone();
         let broadcast = broadcast.clone();
-        audio::spawn(library, config.audio.master_volume, move |playing| {
+        audio::spawn(config.audio.master_volume, move |playing| {
             let mut state = server_state.blocking_write();
             state.playing = playing;
             let _ = broadcast.send(ServerMessage::State { state: state.clone() });
         })?
     };
 
+    let upload_limit = usize::try_from(config.audio.max_upload_mb * 1024 * 1024)?;
     let state = AppState {
         config: Arc::new(config),
         server_state,
         broadcast,
         audio,
-        sounds,
+        store: Arc::new(Mutex::new(store)),
     };
+
+    sync_library(&state).await;
+    {
+        let store = state.store.lock().await;
+        store.save()?;
+        let view = store.view();
+        tracing::info!(
+            dir = %view.library_dir,
+            sounds = view.sounds.len(),
+            buttons = view.buttons.len(),
+            "library ready"
+        );
+    }
+    tokio::spawn(watch_library(state.clone()));
 
     let app = Router::new()
         .route("/api/health", get(health))
-        .route("/api/sounds", get(list_sounds))
+        .route("/api/board", get(api::get_board))
+        .route(
+            "/api/sounds",
+            post(api::upload_sound).layer(DefaultBodyLimit::max(upload_limit)),
+        )
+        .route("/api/hotkeys", post(api::add_hotkey))
+        .route("/api/buttons/{id}", patch(api::update_button).delete(api::delete_button))
         .route("/ws", get(ws::handler))
         .fallback(static_files::handler)
         .layer(TraceLayer::new_for_http())
@@ -91,12 +119,64 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn health() -> Json<serde_json::Value> {
-    Json(json!({ "ok": true, "version": env!("CARGO_PKG_VERSION") }))
+/// Picks up files added to or removed from the sounds folder outside the app.
+async fn watch_library(state: AppState) {
+    let mut tick = tokio::time::interval(LIBRARY_SCAN_INTERVAL);
+    tick.tick().await;
+    loop {
+        tick.tick().await;
+        if sync_library(&state).await {
+            api::commit(&state, &*state.store.lock().await);
+        }
+    }
 }
 
-async fn list_sounds(State(state): State<AppState>) -> Json<SoundList> {
-    Json((*state.sounds).clone())
+/// Loads new files and forgets deleted ones. Returns true if the board changed.
+async fn sync_library(state: &AppState) -> bool {
+    let (new_files, missing) = {
+        let store = state.store.lock().await;
+        (store.unknown_files(), store.missing_sounds())
+    };
+    let mut changed = false;
+
+    if !missing.is_empty() {
+        let mut store = state.store.lock().await;
+        for id in missing {
+            tracing::info!(sound_id = %id, "sound file removed");
+            store.forget_sound(&id);
+            state.audio.unload(id);
+        }
+        changed = true;
+    }
+
+    for path in new_files {
+        let p = path.clone();
+        let decoded = tokio::task::spawn_blocking(move || library::decode_file(&p)).await;
+        let mut store = state.store.lock().await;
+        match decoded {
+            Ok(Ok(decoded)) => {
+                if let Some(id) = store.register(&path, decoded.duration_ms, None) {
+                    tracing::info!(sound_id = %id, "loaded sound");
+                    state.audio.load(id, decoded.buffer);
+                    changed = true;
+                }
+            }
+            Ok(Err(e)) => {
+                tracing::warn!(path = %path.display(), "skipping: {e:#}");
+                store.mark_failed(&path);
+            }
+            Err(e) => {
+                tracing::warn!(path = %path.display(), "decoder crashed: {e}");
+                store.mark_failed(&path);
+            }
+        }
+    }
+
+    changed | state.store.lock().await.prune_dangling()
+}
+
+async fn health() -> Json<serde_json::Value> {
+    Json(json!({ "ok": true, "version": env!("CARGO_PKG_VERSION") }))
 }
 
 fn parse_config_arg() -> Option<PathBuf> {

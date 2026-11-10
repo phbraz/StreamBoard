@@ -11,8 +11,8 @@ use futures_util::{SinkExt, StreamExt};
 use tokio::sync::mpsc;
 
 use crate::{
-    AppState,
-    protocol::{ClientMessage, ServerMessage},
+    AppState, hotkey,
+    protocol::{Button, ClientMessage, ServerMessage},
 };
 
 const HELLO_TIMEOUT: Duration = Duration::from_secs(5);
@@ -93,6 +93,17 @@ async fn dispatch(msg: ClientMessage, state: &AppState, device_id: &str) -> Serv
         ClientMessage::Ping => return ServerMessage::Pong,
         ClientMessage::Hello { .. } => {
             return ServerMessage::Error { message: "already authenticated".into() };
+        }
+        ClientMessage::Press { request_id, button_id } => {
+            let button = state.store.lock().await.button(&button_id);
+            let result = match button {
+                Some(Button::Sound { sound_id, .. }) => {
+                    state.audio.play(sound_id, device_id.to_string()).await
+                }
+                Some(Button::Hotkey { keys, .. }) => hotkey::send(&keys).await,
+                None => Err(format!("unknown button {button_id}")),
+            };
+            (request_id, result)
         }
         ClientMessage::Play { request_id, sound_id } => {
             (request_id, state.audio.play(sound_id, device_id.to_string()).await)

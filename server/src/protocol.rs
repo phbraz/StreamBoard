@@ -1,4 +1,4 @@
-//! WebSocket messages. TypeScript bindings are generated into
+//! WebSocket messages and HTTP payloads. TypeScript bindings are generated into
 //! `web/src/protocol/generated` by `cargo test`.
 
 use serde::{Deserialize, Serialize};
@@ -10,6 +10,11 @@ use ts_rs::TS;
 pub enum ClientMessage {
     Hello {
         token: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    Press {
+        request_id: String,
+        button_id: String,
     },
     #[serde(rename_all = "camelCase")]
     Play {
@@ -72,24 +77,70 @@ pub struct ServerState {
 #[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
+pub struct PlayingSound {
+    pub sound_id: String,
+    pub device_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct SoundInfo {
     pub id: String,
     pub label: String,
     pub duration_ms: u32,
 }
 
-#[derive(Debug, Clone, Serialize, TS)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(tag = "kind", rename_all = "camelCase")]
 #[ts(export)]
-pub struct SoundList {
-    pub library_dir: String,
-    pub sounds: Vec<SoundInfo>,
+pub enum Button {
+    #[serde(rename_all = "camelCase")]
+    Sound {
+        id: String,
+        label: String,
+        sound_id: String,
+    },
+    Hotkey {
+        id: String,
+        label: String,
+        keys: String,
+    },
 }
 
+impl Button {
+    pub fn id(&self) -> &str {
+        match self {
+            Button::Sound { id, .. } | Button::Hotkey { id, .. } => id,
+        }
+    }
+}
+
+/// Everything a client needs to render the board.
 #[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
-pub struct PlayingSound {
-    pub sound_id: String,
-    pub device_id: String,
+pub struct BoardView {
+    pub buttons: Vec<Button>,
+    pub sounds: Vec<SoundInfo>,
+    pub library_dir: String,
+    #[ts(type = "number")]
+    pub max_upload_mb: u64,
+}
+
+#[derive(Debug, Clone, Deserialize, TS)]
+#[ts(export)]
+pub struct NewHotkey {
+    pub label: String,
+    pub keys: String,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, TS)]
+#[serde(default)]
+#[ts(export)]
+pub struct ButtonPatch {
+    #[ts(optional)]
+    pub label: Option<String>,
+    #[ts(optional)]
+    pub keys: Option<String>,
 }

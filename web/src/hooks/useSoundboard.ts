@@ -19,6 +19,8 @@ export function useSoundboard(token: string) {
   const [status, setStatus] = useState<ConnectionStatus>('connecting')
   const [state, setState] = useState<ServerState>({ micMuted: false, playing: [] })
   const [deviceId, setDeviceId] = useState<string | null>(null)
+  // Bumped whenever the board should be refetched (connect, or another device edited it).
+  const [boardVersion, setBoardVersion] = useState(0)
 
   const socket = useRef<WebSocket | null>(null)
   const pending = useRef(new Map<string, (ack: Ack) => void>())
@@ -46,6 +48,10 @@ export function useSoundboard(token: string) {
             setDeviceId(msg.deviceId)
             setState(msg.state)
             setStatus('open')
+            setBoardVersion((v) => v + 1)
+            break
+          case 'boardUpdated':
+            setBoardVersion((v) => v + 1)
             break
           case 'state':
             setState(msg.state)
@@ -111,6 +117,8 @@ export function useSoundboard(token: string) {
     status,
     state,
     deviceId,
+    boardVersion,
+    press: (buttonId: string) => request({ type: 'press', buttonId }),
     play: (soundId: string) => request({ type: 'play', soundId }),
     stop: (soundId: string) => request({ type: 'stop', soundId }),
     stopAll: () => request({ type: 'stopAll' }),

@@ -28,10 +28,17 @@ Regenerate the TypeScript protocol types after changing `server/src/protocol.rs`
 cargo test -p soundboard-server
 ```
 
-## Sounds
+## Sounds and hotkeys
 
-Put mp3, ogg, wav, flac or m4a files in `~/.local/share/soundboard/sounds`
-(or set `audio.sounds_dir` in `~/.config/soundboard/config.toml`) and restart the server.
+- **+ Sound** on the board uploads mp3, ogg, wav, flac or m4a files to the server.
+  Files copied straight into `~/.local/share/soundboard/sounds` (or `audio.sounds_dir`)
+  show up within a few seconds too.
+- **+ Hotkey** adds a button that presses a key combo on the server, like
+  `super+shift+b`. It uses `ydotool`, so `ydotoold` must be running
+  (`systemctl --user enable --now ydotool`).
+- **Edit** lets you rename, re-key or delete buttons. Deleting a sound also deletes its file.
+
+The board is saved in `~/.local/share/soundboard/board.json`.
 
 ## Reaching it from other devices
 
