@@ -55,6 +55,45 @@ The board is saved in `~/.local/share/soundboard/board.json`.
    "Upgrade connections to HTTPS" (Brave), pause VPN/ad-block DNS apps, and
    check the router for AP/client isolation.
 
+## Running the server on Windows
+
+The server runs on Windows: sounds play through the default output and
+hotkeys are sent with `SendInput`. Clients are just browsers, as on Linux.
+
+1. Get `soundboard-server.exe`, using any one of these:
+   - Build it with Docker (Docker Desktop on Windows works). This writes the
+     Windows and Linux binaries to `dist/`:
+     ```sh
+     docker build --target artifacts --output type=local,dest=dist .
+     ```
+     The container only builds the binary. The server can't run inside Docker,
+     because a container can't reach the host's audio devices or keyboard input.
+   - Download it from the latest **build** workflow run on GitHub (artifact `soundboard-Windows`).
+   - Cross-compile it on Linux with [cargo-zigbuild](https://github.com/rust-cross/cargo-zigbuild):
+     ```sh
+     (cd web && npm run build)
+     rustup target add x86_64-pc-windows-gnu
+     cargo zigbuild --release -p soundboard-server --target x86_64-pc-windows-gnu
+     ```
+   - Build it on Windows with Rust and Node installed: `cd web; npm ci; npm run build; cd ..; cargo build --release`.
+2. Run it. It prints the address to open on your phone, e.g. `open http://192.168.1.50:7878`.
+3. Allow it through Windows Firewall. Accept the prompt on first run and tick
+   **Private networks**, or from an admin PowerShell:
+   ```powershell
+   New-NetFirewallRule -DisplayName "Soundboard" -Direction Inbound -Protocol TCP -LocalPort 7878 -Profile Private -Action Allow
+   ```
+   Your Wi-Fi must be set to **Private** in Windows settings. On a "Public"
+   network, Windows blocks other devices.
+
+On Windows, files live in `%APPDATA%\soundboard\`. That folder holds
+`config.toml`, `board.json` and `sounds\`.
+
+Hotkey notes for Windows:
+- `super` is the Win key, so `win+shift+s` works as a combo.
+- Windows only delivers keys to apps running as administrator if the server
+  also runs as administrator.
+- Ctrl+Alt+Del and Win+L can't be sent by any app.
+
 ## Production build
 
 ```sh

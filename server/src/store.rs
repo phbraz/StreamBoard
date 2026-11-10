@@ -83,6 +83,7 @@ impl Store {
             sounds: self.sounds.values().map(|s| s.info.clone()).collect(),
             library_dir: self.sounds_dir.display().to_string(),
             max_upload_mb: self.max_upload_mb,
+            server_os: std::env::consts::OS.to_string(),
         }
     }
 

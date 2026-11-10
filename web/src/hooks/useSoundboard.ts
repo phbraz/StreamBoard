@@ -21,6 +21,9 @@ export function useSoundboard(token: string) {
   const [deviceId, setDeviceId] = useState<string | null>(null)
   // Bumped whenever the board should be refetched (connect, or another device edited it).
   const [boardVersion, setBoardVersion] = useState(0)
+  // When the newest playing instance of each sound started (client clock), for progress bars.
+  const [startedAt, setStartedAt] = useState<Record<string, number>>({})
+  const playCounts = useRef(new Map<string, number>())
 
   const socket = useRef<WebSocket | null>(null)
   const pending = useRef(new Map<string, (ack: Ack) => void>())
@@ -30,6 +33,22 @@ export function useSoundboard(token: string) {
     let backoff = 500
     let retry: ReturnType<typeof setTimeout> | undefined
     let disposed = false
+
+    const applyState = (next: ServerState) => {
+      const counts = new Map<string, number>()
+      for (const p of next.playing) counts.set(p.soundId, (counts.get(p.soundId) ?? 0) + 1)
+      const prevCounts = playCounts.current
+      playCounts.current = counts
+      const now = Date.now()
+      setStartedAt((prev) => {
+        const out: Record<string, number> = {}
+        for (const [id, n] of counts) {
+          out[id] = n > (prevCounts.get(id) ?? 0) || !(id in prev) ? now : prev[id]
+        }
+        return out
+      })
+      setState(next)
+    }
 
     const connect = () => {
       setStatus('connecting')
@@ -46,7 +65,7 @@ export function useSoundboard(token: string) {
         switch (msg.type) {
           case 'welcome':
             setDeviceId(msg.deviceId)
-            setState(msg.state)
+            applyState(msg.state)
             setStatus('open')
             setBoardVersion((v) => v + 1)
             break
@@ -54,7 +73,7 @@ export function useSoundboard(token: string) {
             setBoardVersion((v) => v + 1)
             break
           case 'state':
-            setState(msg.state)
+            applyState(msg.state)
             break
           case 'ack':
             pending.current.get(msg.requestId)?.(msg)
@@ -118,6 +137,7 @@ export function useSoundboard(token: string) {
     state,
     deviceId,
     boardVersion,
+    startedAt,
     press: (buttonId: string) => request({ type: 'press', buttonId }),
     play: (soundId: string) => request({ type: 'play', soundId }),
     stop: (soundId: string) => request({ type: 'stop', soundId }),

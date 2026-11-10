@@ -110,7 +110,14 @@ async fn main() -> anyhow::Result<()> {
         .with_state(state.clone());
 
     let listener = tokio::net::TcpListener::bind(&state.config.server.bind).await?;
-    tracing::info!("listening on http://{}", listener.local_addr()?);
+    let addr = listener.local_addr()?;
+    tracing::info!("listening on http://{addr}");
+    if addr.ip().is_unspecified() {
+        match lan_ip() {
+            Some(ip) => tracing::info!("open http://{ip}:{} on your other devices", addr.port()),
+            None => tracing::warn!("couldn't detect this PC's LAN address"),
+        }
+    }
     axum::serve(listener, app)
         .with_graceful_shutdown(async {
             let _ = tokio::signal::ctrl_c().await;
@@ -177,6 +184,14 @@ async fn sync_library(state: &AppState) -> bool {
 
 async fn health() -> Json<serde_json::Value> {
     Json(json!({ "ok": true, "version": env!("CARGO_PKG_VERSION") }))
+}
+
+/// The address other devices on the LAN can reach. Connecting a UDP socket sends nothing;
+/// it only asks the OS which local address it would route through.
+fn lan_ip() -> Option<std::net::IpAddr> {
+    let socket = std::net::UdpSocket::bind("0.0.0.0:0").ok()?;
+    socket.connect("192.0.2.1:9").ok()?;
+    socket.local_addr().ok().map(|a| a.ip()).filter(|ip| !ip.is_loopback())
 }
 
 fn parse_config_arg() -> Option<PathBuf> {

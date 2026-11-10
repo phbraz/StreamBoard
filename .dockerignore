@@ -1,0 +1,6 @@
+target
+dist
+.git
+.cursor
+**/node_modules
+web/dist

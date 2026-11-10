@@ -59,9 +59,13 @@ export function comboFromEvent(e: KeyboardEvent): string | null {
   return [...mods, key].join('+')
 }
 
-export function prettyCombo(combo: string): string {
+/** Display form of a combo; tolerates half-typed input like `super+`. */
+export function prettyCombo(combo: string, serverOs?: string): string {
   return combo
     .split('+')
-    .map((part) => (part.length === 1 ? part.toUpperCase() : part[0].toUpperCase() + part.slice(1)))
+    .map((part) => part.trim().toLowerCase())
+    .filter(Boolean)
+    .map((part) => (part === 'super' && serverOs === 'windows' ? 'win' : part))
+    .map((part) => part[0].toUpperCase() + part.slice(1))
     .join(' + ')
 }

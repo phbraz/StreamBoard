@@ -1,0 +1,51 @@
+name: build
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            bin: soundboard-server
+          - os: windows-latest
+            bin: soundboard-server.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Build UI
+        working-directory: web
+        run: |
+          npm ci
+          npm run build
+
+      - name: Install ALSA headers
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev pkg-config
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Test
+        run: cargo test --locked
+
+      - name: Build server
+        run: cargo build --release --locked -p soundboard-server
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: soundboard-${{ runner.os }}
+          path: target/release/${{ matrix.bin }}

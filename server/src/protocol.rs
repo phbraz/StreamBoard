@@ -126,6 +126,8 @@ pub struct BoardView {
     pub library_dir: String,
     #[ts(type = "number")]
     pub max_upload_mb: u64,
+    /// The server's OS (`linux`, `windows`, ...), so the UI can name keys like the Win key.
+    pub server_os: String,
 }
 
 #[derive(Debug, Clone, Deserialize, TS)]

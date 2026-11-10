@@ -2,18 +2,115 @@
 
 /* Board theme: restyle the whole board from here. */
 @theme {
-  --color-board-bg: #0f0f10;
-  --color-board-fg: #e7e7ea;
-  --color-board-muted: #8a8a93;
-  --color-button: #1c1c1f;
-  --color-button-hover: #26262a;
-  --color-button-border: #3a3a40;
-  --color-accent: #e11d48;
+  --color-board-bg: #0b0b0f;
+  --color-board-fg: #ececf1;
+  --color-board-muted: #8a8a96;
+  --color-button: #17171d;
+  --color-button-hover: #20202a;
+  --color-button-border: #2e2e3a;
+  --color-accent: #f43f5e;
   --color-ok: #22c55e;
   --color-warn: #f59e0b;
 
-  --radius-button: 0.875rem;
+  --radius-button: 1rem;
   --spacing-board-gap: 0.75rem;
+
+  --animate-pop: pop 220ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  --animate-shake: shake 420ms ease-in-out;
+  --animate-flash: flash 650ms ease-out forwards;
+  --animate-glow: glow 1.4s ease-in-out infinite;
+  --animate-progress: progress linear forwards;
+  --animate-eq: eq 0.8s ease-in-out infinite;
+  --animate-toast: toast 220ms ease-out both;
+  --animate-fade: fade 160ms ease-out both;
+  --animate-sheet: sheet 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+
+  @keyframes pop {
+    from {
+      opacity: 0;
+      transform: scale(0.8);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  @keyframes shake {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    20%,
+    60% {
+      transform: translateX(-6px);
+    }
+    40%,
+    80% {
+      transform: translateX(6px);
+    }
+  }
+  @keyframes flash {
+    from {
+      opacity: 0.55;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+  @keyframes glow {
+    0%,
+    100% {
+      box-shadow: 0 0 0 2px rgb(255 255 255 / 0.9), 0 0 18px 2px rgb(255 255 255 / 0.25);
+    }
+    50% {
+      box-shadow: 0 0 0 2px rgb(255 255 255 / 0.9), 0 0 32px 8px rgb(255 255 255 / 0.4);
+    }
+  }
+  @keyframes progress {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
+    }
+  }
+  @keyframes eq {
+    0%,
+    100% {
+      transform: scaleY(0.3);
+    }
+    50% {
+      transform: scaleY(1);
+    }
+  }
+  @keyframes toast {
+    from {
+      opacity: 0;
+      transform: translate(-50%, 12px);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+  }
+  @keyframes fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes sheet {
+    from {
+      opacity: 0;
+      transform: translateY(24px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
 }
 
 html,
@@ -25,4 +122,19 @@ body,
 body {
   @apply bg-board-bg text-board-fg antialiased;
   font-family: ui-sans-serif, system-ui, sans-serif;
+  background-image:
+    radial-gradient(60rem 30rem at 10% -10%, rgb(244 63 94 / 0.12), transparent 60%),
+    radial-gradient(50rem 30rem at 110% 10%, rgb(99 102 241 / 0.12), transparent 60%);
+  background-attachment: fixed;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
 }

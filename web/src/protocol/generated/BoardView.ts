@@ -5,4 +5,8 @@ import type { SoundInfo } from "./SoundInfo";
 /**
  * Everything a client needs to render the board.
  */
-export type BoardView = { buttons: Array<Button>, sounds: Array<SoundInfo>, libraryDir: string, maxUploadMb: number, };
+export type BoardView = { buttons: Array<Button>, sounds: Array<SoundInfo>, libraryDir: string, maxUploadMb: number, 
+/**
+ * The server's OS (`linux`, `windows`, ...), so the UI can name keys like the Win key.
+ */
+serverOs: string, };

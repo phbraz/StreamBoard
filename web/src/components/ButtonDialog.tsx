@@ -6,6 +6,7 @@ type Props = {
   initialLabel?: string
   initialKeys?: string
   withKeys: boolean
+  serverOs?: string
   deleteWarning?: string
   onSave: (label: string, keys: string) => Promise<void>
   onDelete?: () => Promise<void>
@@ -20,6 +21,7 @@ export function ButtonDialog({
   initialLabel = '',
   initialKeys = '',
   withKeys,
+  serverOs,
   deleteWarning,
   onSave,
   onDelete,
@@ -75,13 +77,13 @@ export function ButtonDialog({
 
   return (
     <div
-      className="fixed inset-0 z-10 flex items-end justify-center bg-black/60 p-4 sm:items-center"
+      className="fixed inset-0 z-20 flex animate-fade items-end justify-center bg-black/60 p-4 backdrop-blur-sm sm:items-center"
       onClick={onClose}
     >
       <form
         onSubmit={submit}
         onClick={(e) => e.stopPropagation()}
-        className="flex w-full max-w-sm flex-col gap-4 rounded-button border border-button-border bg-button p-5"
+        className="flex w-full max-w-sm animate-sheet flex-col gap-4 rounded-button border border-button-border bg-button p-5 shadow-2xl shadow-black/60"
       >
         <h2 className="text-lg font-semibold">{title}</h2>
 
@@ -104,7 +106,7 @@ export function ButtonDialog({
               <input
                 className={input}
                 value={keys}
-                placeholder="super+shift+b"
+                placeholder={serverOs === 'windows' ? 'win+shift+b' : 'super+shift+b'}
                 onChange={(e) => setKeys(e.target.value)}
                 autoFocus
               />
@@ -119,7 +121,7 @@ export function ButtonDialog({
               </button>
             </div>
             <span className="text-xs">
-              {keys ? prettyCombo(keys) : 'Type a combo or record it on a keyboard.'} Shortcuts your
+              {keys ? prettyCombo(keys, serverOs) : 'Type a combo or record it on a keyboard.'} Shortcuts your
               desktop already uses can't be recorded on that same PC, so type those.
             </span>
           </div>
@@ -148,9 +150,9 @@ export function ButtonDialog({
           <button
             type="submit"
             disabled={busy || (withKeys && !keys.trim())}
-            className="rounded-lg bg-board-fg px-4 py-2 text-sm font-semibold text-board-bg disabled:opacity-40"
+            className="rounded-lg bg-linear-to-r from-rose-500 to-orange-400 px-4 py-2 text-sm font-semibold text-white transition active:scale-95 disabled:opacity-40"
           >
-            {busy ? 'Saving…' : 'Save'}
+            {busy ? 'Working…' : 'Save'}
           </button>
         </div>
       </form>
