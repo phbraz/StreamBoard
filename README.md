@@ -88,6 +88,20 @@ hotkeys are sent with `SendInput`. Clients are just browsers, as on Linux.
 On Windows, files live in `%APPDATA%\soundboard\`. That folder holds
 `config.toml`, `board.json` and `sounds\`.
 
+### Choosing the audio output
+
+By default sounds play on the system default output. Set `audio.output` in
+`config.toml` to play on a specific device instead, for example a virtual device
+that Discord or OBS uses as its microphone:
+
+```toml
+[audio]
+output = "Sonar - Microphone"   # case-insensitive; a unique part of the name is enough
+```
+
+At startup the server logs every output it can see (`audio output devices`), and
+it refuses to start with a clear error if the name doesn't match exactly one device.
+
 Hotkey notes for Windows:
 - `super` is the Win key, so `win+shift+s` works as a combo.
 - Windows only delivers keys to apps running as administrator if the server

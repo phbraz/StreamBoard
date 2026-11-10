@@ -1,7 +1,12 @@
 use std::{collections::HashMap, sync::mpsc, thread, time::Duration};
 
 use anyhow::Context;
-use rodio::{Player, buffer::SamplesBuffer};
+use rodio::{
+    DeviceSinkBuilder, Player,
+    buffer::SamplesBuffer,
+    cpal::{self, traits::HostTrait},
+    stream::MixerDeviceSink,
+};
 use tokio::sync::oneshot;
 
 use crate::protocol::PlayingSound;
@@ -57,9 +62,63 @@ struct Voice {
     player: Player,
 }
 
+/// Names of every output device the system offers, for the startup log and error messages.
+pub fn output_device_names() -> Vec<String> {
+    cpal::default_host()
+        .output_devices()
+        .map(|devices| devices.map(|d| d.to_string()).collect())
+        .unwrap_or_default()
+}
+
+/// Opens the output named `output`, or the system default for `"default"`.
+/// Matching ignores case and accepts a unique substring, so `"Sonar - Stream"` is enough.
+fn open_sink(output: &str) -> anyhow::Result<MixerDeviceSink> {
+    if output.eq_ignore_ascii_case("default") {
+        return DeviceSinkBuilder::open_default_sink().map_err(|e| anyhow::anyhow!("{e}"));
+    }
+
+    let wanted = output.to_lowercase();
+    let devices: Vec<_> = cpal::default_host()
+        .output_devices()
+        .map_err(|e| anyhow::anyhow!("listing output devices: {e}"))?
+        .map(|d| (d.to_string(), d))
+        .collect();
+
+    let exact = devices.iter().position(|(name, _)| name.to_lowercase() == wanted);
+    let index = match exact {
+        Some(i) => i,
+        None => {
+            let partial: Vec<usize> = devices
+                .iter()
+                .enumerate()
+                .filter(|(_, (name, _))| name.to_lowercase().contains(&wanted))
+                .map(|(i, _)| i)
+                .collect();
+            match partial.as_slice() {
+                [i] => *i,
+                [] => anyhow::bail!(
+                    "no output device matches {output:?}. Available: {}",
+                    devices.iter().map(|(n, _)| format!("{n:?}")).collect::<Vec<_>>().join(", ")
+                ),
+                many => anyhow::bail!(
+                    "{output:?} matches several output devices, be more specific: {}",
+                    many.iter().map(|&i| format!("{:?}", devices[i].0)).collect::<Vec<_>>().join(", ")
+                ),
+            }
+        }
+    };
+
+    let (name, device) = devices.into_iter().nth(index).expect("index is in range");
+    tracing::info!(device = %name, "using audio output");
+    DeviceSinkBuilder::from_device(device)
+        .and_then(DeviceSinkBuilder::open_stream)
+        .map_err(|e| anyhow::anyhow!("opening {name:?}: {e}"))
+}
+
 /// Starts the audio thread. The output device must be owned by a single thread,
 /// so everything goes through a command channel.
 pub fn spawn(
+    output: String,
     master_volume: f32,
     on_change: impl Fn(Vec<PlayingSound>) + Send + 'static,
 ) -> anyhow::Result<AudioHandle> {
@@ -67,14 +126,14 @@ pub fn spawn(
     let (ready_tx, ready_rx) = mpsc::channel::<anyhow::Result<()>>();
 
     thread::Builder::new().name("audio".into()).spawn(move || {
-        let sink = match rodio::DeviceSinkBuilder::open_default_sink() {
+        let sink = match open_sink(&output) {
             Ok(mut sink) => {
                 sink.log_on_drop(false);
                 let _ = ready_tx.send(Ok(()));
                 sink
             }
             Err(e) => {
-                let _ = ready_tx.send(Err(anyhow::anyhow!("opening audio output: {e}")));
+                let _ = ready_tx.send(Err(e.context("opening audio output")));
                 return;
             }
         };

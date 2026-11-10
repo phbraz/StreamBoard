@@ -50,12 +50,11 @@ async fn main() -> anyhow::Result<()> {
     let config = Config::load(config_path.as_deref())?;
     let data_dir = config::data_dir();
     tracing::info!(data_dir = %data_dir.display(), "starting");
-    if config.audio.output != "default" {
-        tracing::warn!(
-            output = %config.audio.output,
-            "named audio outputs are not supported yet, using the default output"
-        );
-    }
+    tracing::info!(
+        outputs = ?audio::output_device_names(),
+        selected = %config.audio.output,
+        "audio output devices"
+    );
 
     let store = Store::open(config.audio.sounds_dir(), &data_dir, config.audio.max_upload_mb)?;
 
@@ -65,7 +64,7 @@ async fn main() -> anyhow::Result<()> {
     let audio = {
         let server_state = server_state.clone();
         let broadcast = broadcast.clone();
-        audio::spawn(config.audio.master_volume, move |playing| {
+        audio::spawn(config.audio.output.clone(), config.audio.master_volume, move |playing| {
             let mut state = server_state.blocking_write();
             state.playing = playing;
             let _ = broadcast.send(ServerMessage::State { state: state.clone() });
