@@ -315,12 +315,24 @@ the tools it needs exist and logs a warning if one is missing.
 4. **Actions:** mic (with state polling), ydotool keypress, hyprctl shortcut.
 5. **UI:** board, editor, uploads, theming, reconnect handling.
 6. **Polish:** QR code + mDNS, systemd user service, packaging.
-7. **Later:** OBS integration, shell actions, Windows/macOS targets.
+7. **Later:** OBS integration, shell actions, Windows/macOS targets, HTTPS
+   via our Cloudflare domain (see open questions).
 
 ## 14. Open questions
 
 - Should mic mute have a second "mute everything" variant that mutes the virtual
   mic too?
 - Should a device be able to view or copy another device's board?
-- Should we offer an optional HTTPS mode (self-signed cert) for installing the
-  UI as a full web app on phones?
+- **Reminder: HTTPS via our Cloudflare domain.** Point a DNS-only (grey cloud)
+  record such as `deck.<domain>` at the target's LAN IP. Get a Let's Encrypt
+  certificate through a DNS challenge with a Cloudflare API token limited to
+  editing DNS on that zone (`lego`/`certbot` first, `instant-acme` built in
+  later). The server loads the cert/key paths from `config.toml` with
+  `axum-server` + `rustls`. Keep plain HTTP as a fallback. To watch for:
+  - Routers or DNS filters that block public names pointing to LAN IPs
+    (DNS rebinding protection) need an exception for the name.
+  - The PC needs a DHCP reservation so its LAN IP doesn't change.
+  
+  This makes the UI installable as a full web app on phones. Cloudflare Tunnel
+  + Access for remote use is a separate, later decision because it changes the
+  LAN-only security model.
