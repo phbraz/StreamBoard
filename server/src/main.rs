@@ -181,7 +181,7 @@ async fn run() -> anyhow::Result<()> {
 
 /// Stops the server on Ctrl+C. On Windows, Quit from the tray icon does the same.
 async fn shutdown_signal(addr: std::net::SocketAddr) {
-    let (tx, rx) = tokio::sync::oneshot::channel();
+    let (tx, rx) = tokio::sync::oneshot::channel::<()>();
     #[cfg(windows)]
     {
         let url = tray::board_url(addr);
