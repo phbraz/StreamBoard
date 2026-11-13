@@ -1,4 +1,4 @@
-# Soundboard — Design
+# deckboard — Design
 
 A LAN stream deck. Any device on the local network (PC, laptop, phone) opens a
 web UI served by the **target PC** and presses buttons. The target plays sounds
