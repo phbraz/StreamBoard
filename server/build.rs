@@ -1,10 +1,12 @@
-use std::path::Path;
-
 fn main() {
-    // rust-embed requires the folder to exist at compile time, even before the UI is built.
-    let dist = Path::new(env!("CARGO_MANIFEST_DIR")).join("../web/dist");
-    if !dist.exists() {
-        std::fs::create_dir_all(&dist).expect("create web/dist");
-    }
-    println!("cargo:rerun-if-changed=../web/dist");
+    println!("cargo:rerun-if-changed=../assets/theboard.ico");
+    #[cfg(target_os = "windows")]
+    embed_app_icon();
+}
+
+#[cfg(target_os = "windows")]
+fn embed_app_icon() {
+    let mut resource = winresource::WindowsResource::new();
+    resource.set_icon("../assets/theboard.ico");
+    resource.compile().expect("embedding the TheBoard icon");
 }

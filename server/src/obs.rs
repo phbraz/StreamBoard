@@ -10,11 +10,22 @@ use crate::config::ObsConfig;
 
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(3);
 
-pub struct Obs {
+struct Conn {
     host: String,
     port: u16,
     password: Option<String>,
-    client: Mutex<Option<Client>>,
+    client: Option<Client>,
+}
+
+/// What the server is using to reach OBS. `password` is empty when none is saved.
+pub struct LiveObs {
+    pub host: String,
+    pub port: u16,
+    pub password: String,
+}
+
+pub struct Obs {
+    conn: Mutex<Conn>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -44,19 +55,19 @@ impl std::fmt::Display for ObsError {
 macro_rules! obs_call {
     ($obs:expr, |$client:ident| $body:expr) => {{
         let obs: &Obs = $obs;
-        let mut slot = obs.client.lock().await;
-        let mut out = Err(ObsError::Offline(obs.hint("OBS request failed")));
+        let mut conn = obs.conn.lock().await;
+        let mut out = Err(ObsError::Offline(conn.hint("OBS request failed")));
         for attempt in 0..2 {
-            if slot.is_none() {
-                match obs.connect().await {
-                    Ok(client) => *slot = Some(client),
+            if conn.client.is_none() {
+                match conn.connect().await {
+                    Ok(client) => conn.client = Some(client),
                     Err(err) => {
                         out = Err(err);
                         break;
                     }
                 }
             }
-            let $client = slot.as_ref().expect("client was just connected");
+            let $client = conn.client.as_ref().expect("client was just connected");
             match $body.await {
                 Ok(value) => {
                     out = Ok(value);
@@ -64,10 +75,10 @@ macro_rules! obs_call {
                 }
                 Err(err) if attempt == 0 && is_disconnect(&err) => {
                     tracing::warn!("OBS request failed, reconnecting: {err}");
-                    *slot = None;
+                    conn.client = None;
                 }
                 Err(err) => {
-                    out = Err(obs.classify(err));
+                    out = Err(conn.classify(err));
                     break;
                 }
             }
@@ -78,16 +89,28 @@ macro_rules! obs_call {
 
 impl Obs {
     pub fn new(config: &ObsConfig) -> Self {
-        let password = {
-            let password = config.password.trim();
-            (!password.is_empty()).then(|| password.to_string())
-        };
         Self {
-            host: config.host.clone(),
-            port: config.port,
-            password,
-            client: Mutex::new(None),
+            conn: Mutex::new(Conn::from_config(config)),
         }
+    }
+
+    pub async fn live(&self) -> LiveObs {
+        let conn = self.conn.lock().await;
+        LiveObs {
+            host: conn.host.clone(),
+            port: conn.port,
+            password: conn.password.clone().unwrap_or_default(),
+        }
+    }
+
+    /// Replaces the websocket target and drops any open connection.
+    pub async fn apply(&self, host: String, port: u16, password: String) {
+        let mut conn = self.conn.lock().await;
+        let password = password.trim();
+        conn.host = host;
+        conn.port = port;
+        conn.password = (!password.is_empty()).then(|| password.to_string());
+        conn.client = None;
     }
 
     pub async fn scenes(&self) -> Result<Vec<Scene>, ObsError> {
@@ -121,6 +144,18 @@ impl Obs {
             .find(|candidate| candidate.name == scene)
             .map(|candidate| candidate.name)
             .ok_or_else(|| ObsError::Rejected(format!("OBS has no scene \"{scene}\"")))
+    }
+}
+
+impl Conn {
+    fn from_config(config: &ObsConfig) -> Self {
+        let password = config.password.trim();
+        Self {
+            host: config.host.clone(),
+            port: config.port,
+            password: (!password.is_empty()).then(|| password.to_string()),
+            client: None,
+        }
     }
 
     async fn connect(&self) -> Result<Client, ObsError> {

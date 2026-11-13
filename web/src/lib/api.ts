@@ -1,4 +1,16 @@
-import type { AppList, BoardView, Button, ButtonPatch, NewApp, NewHotkey, NewObsScene, ObsSceneList } from '../protocol'
+import type {
+  AppList,
+  BoardView,
+  Button,
+  ButtonPatch,
+  NewApp,
+  NewHotkey,
+  NewObsScene,
+  ObsSceneList,
+  ObsSettings,
+  ObsSettingsSaved,
+  ObsSettingsUpdate,
+} from '../protocol'
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, init)
@@ -27,6 +39,11 @@ export function uploadSound(file: File, label?: string) {
 export const addHotkey = (hotkey: NewHotkey) => request<Button>('/api/hotkeys', json('POST', hotkey))
 
 export const getObsScenes = () => request<ObsSceneList>('/api/obs/scenes')
+
+export const getObsSettings = () => request<ObsSettings>('/api/obs/settings')
+
+export const saveObsSettings = (settings: ObsSettingsUpdate) =>
+  request<ObsSettingsSaved>('/api/obs/settings', json('PUT', settings))
 
 export const addObsScene = (scene: NewObsScene) => request<Button>('/api/obs/scenes', json('POST', scene))
 

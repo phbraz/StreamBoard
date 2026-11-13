@@ -47,7 +47,7 @@ OBS has to be running with its websocket server enabled:
 
 1. In OBS, open **Tools → WebSocket Server Settings**.
 2. Enable the server. The default port is `4455`.
-3. If you set a password, put the same one in `config.toml`:
+3. In TheBoard, open **OBS** (or the tray item **OBS settings**) and enter the same host, port, and password. They are saved in `config.toml`:
 
 ```toml
 [obs]
@@ -105,7 +105,7 @@ hotkeys are sent with `SendInput`. Clients are just browsers, as on Linux.
      cargo zigbuild --release -p soundboard-server --target x86_64-pc-windows-gnu
      ```
    - Build it on Windows with Rust and Node installed: `cd web; npm ci; npm run build; cd ..; cargo build --release`.
-2. Run it. It prints the address to open on your phone, e.g. `open http://192.168.1.50:7878`.
+2. Run it. A debug `cargo run` prints the address to open on your phone, e.g. `open http://192.168.1.50:7878`, and Ctrl+C stops it. A release build keeps the console hidden and adds a tray icon with **Open** and **Quit**.
 3. Allow it through Windows Firewall. Accept the prompt on first run and tick
    **Private networks**, or from an admin PowerShell:
    ```powershell
@@ -116,6 +116,24 @@ hotkeys are sent with `SendInput`. Clients are just browsers, as on Linux.
 
 On Windows, files live in `%APPDATA%\soundboard\`. That folder holds
 `config.toml`, `board.json` and `sounds\`.
+
+### Windows installer
+
+The setup installs the finished release exe for the current user. It adds a
+desktop shortcut, a Start menu shortcut, a Startup shortcut, and an uninstaller. The Startup copy
+runs in the tray. **Open** (or double-click the icon) shows the board. **Quit**
+stops the server. A second launch opens the board in the browser.
+
+Build the UI and the release exe, then compile the setup with [Inno Setup 6](https://jrsoftware.org/isinfo.php):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File installer/build.ps1
+```
+
+That writes `dist/TheBoard-Setup.exe`. The first time the app listens on port
+7878, Windows asks whether to allow it on private networks. Uninstall leaves
+`%APPDATA%\soundboard` on disk. Stop a dev server on port 7878 before starting
+the installed copy; both want that port.
 
 ### Choosing the audio output
 

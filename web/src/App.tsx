@@ -3,6 +3,7 @@ import { AppDialog } from './components/AppDialog'
 import { BoardButton, type Feedback } from './components/BoardButton'
 import { ButtonDialog } from './components/ButtonDialog'
 import { ObsDialog } from './components/ObsDialog'
+import { ObsSettingsDialog } from './components/ObsSettingsDialog'
 import { NowPlaying } from './components/NowPlaying'
 import { useSoundboard, type ConnectionStatus } from './hooks/useSoundboard'
 import { addApp, addHotkey, addObsScene, deleteButton, getBoard, updateButton, uploadSound } from './lib/api'
@@ -19,7 +20,12 @@ const TOAST_MS = 2500
 const ERROR_TOAST_MS = 5000
 const FEEDBACK_MS = 700
 
-type Dialog = { mode: 'newHotkey' } | { mode: 'newObs' } | { mode: 'newApp' } | { mode: 'edit'; button: Button }
+type Dialog =
+  | { mode: 'newHotkey' }
+  | { mode: 'newObs' }
+  | { mode: 'newApp' }
+  | { mode: 'obsSettings' }
+  | { mode: 'edit'; button: Button }
 type Toast = { id: number; text: string; error: boolean }
 
 const addTile =
@@ -54,6 +60,17 @@ export default function App() {
       FEEDBACK_MS,
     )
   }
+
+  useEffect(() => {
+    const openObsSettings = () => {
+      if (window.location.hash !== '#obs') return
+      setDialog({ mode: 'obsSettings' })
+      window.history.replaceState(null, '', window.location.pathname + window.location.search)
+    }
+    openObsSettings()
+    window.addEventListener('hashchange', openObsSettings)
+    return () => window.removeEventListener('hashchange', openObsSettings)
+  }, [])
 
   useEffect(() => {
     getBoard()
@@ -106,14 +123,24 @@ export default function App() {
     <div className="flex min-h-full flex-col">
       <header className="sticky top-0 z-10 border-b border-white/5 bg-board-bg/70 backdrop-blur-md">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-3">
-          <h1 className="bg-linear-to-r from-rose-400 via-fuchsia-400 to-indigo-400 bg-clip-text text-xl font-bold tracking-tight text-transparent">
-            TheBoard
+          <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight">
+            <img src="/theboard.png" alt="" className="size-8 rounded-lg" />
+            <span className="bg-linear-to-r from-rose-400 via-fuchsia-400 to-indigo-400 bg-clip-text text-transparent">
+              TheBoard
+            </span>
           </h1>
           <div className="flex items-center gap-3 text-sm text-board-muted">
             <span className="flex items-center gap-2" title={sb.status}>
               <span className={`size-2.5 rounded-full ${STATUS_STYLE[sb.status]}`} />
               <span className="hidden sm:inline">{sb.status}</span>
             </span>
+            <button
+              type="button"
+              onClick={() => setDialog({ mode: 'obsSettings' })}
+              className="rounded-full border border-button-border px-3 py-1 transition hover:border-board-muted hover:text-board-fg"
+            >
+              OBS
+            </button>
             <button
               type="button"
               onClick={() => setEditing((v) => !v)}
@@ -229,6 +256,8 @@ export default function App() {
           onClose={() => setDialog(null)}
         />
       )}
+
+      {dialog?.mode === 'obsSettings' && <ObsSettingsDialog onClose={() => setDialog(null)} />}
 
       {dialog?.mode === 'newObs' && (
         <ObsDialog

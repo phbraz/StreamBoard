@@ -13,7 +13,8 @@ use crate::{
     library::{self, SUPPORTED},
     protocol::{
         AppInfo, AppList, BoardView, Button, ButtonPatch, NewApp, NewHotkey, NewObsScene,
-        ObsSceneInfo, ObsSceneList, ServerMessage,
+        ObsSceneInfo, ObsSceneList, ObsSettings, ObsSettingsSaved, ObsSettingsUpdate,
+        ServerMessage,
     },
     store::{Store, clean_label},
 };
@@ -160,6 +161,79 @@ pub async fn add_app(
         .map_err(ApiError::bad_request)?;
     commit(&state, &store);
     Ok(Json(button))
+}
+
+pub async fn get_obs_settings(State(state): State<AppState>) -> Json<ObsSettings> {
+    Json(settings_view(&state.obs.live().await))
+}
+
+pub async fn put_obs_settings(
+    State(state): State<AppState>,
+    Json(req): Json<ObsSettingsUpdate>,
+) -> Result<Json<ObsSettingsSaved>, ApiError> {
+    let host = clean_obs_host(&req.host)?;
+    if req.port == 0 {
+        return Err(ApiError::bad_request(
+            "OBS port must be between 1 and 65535",
+        ));
+    }
+    let current = state.obs.live().await;
+    let password = match req.password {
+        None => current.password,
+        Some(password) => clean_obs_password(&password)?,
+    };
+    crate::config::write_obs(&state.config_path, &host, req.port, &password)
+        .map_err(ApiError::internal)?;
+    state.obs.apply(host, req.port, password).await;
+    let settings = settings_view(&state.obs.live().await);
+    let (connected, message) = match state.obs.scenes().await {
+        Ok(scenes) => (
+            true,
+            format!("Saved. OBS answered with {} scenes.", scenes.len()),
+        ),
+        Err(err) => (false, format!("Saved. {err}")),
+    };
+    Ok(Json(ObsSettingsSaved {
+        settings,
+        connected,
+        message,
+    }))
+}
+
+fn settings_view(live: &crate::obs::LiveObs) -> ObsSettings {
+    ObsSettings {
+        host: live.host.clone(),
+        port: live.port,
+        password_set: !live.password.is_empty(),
+    }
+}
+
+fn clean_obs_host(host: &str) -> Result<String, ApiError> {
+    let host = host.trim();
+    if host.is_empty() {
+        return Err(ApiError::bad_request("OBS server is empty"));
+    }
+    if host.chars().count() > 253
+        || host
+            .chars()
+            .any(|c| c.is_whitespace() || c.is_control() || c == '/' || c == '\\')
+    {
+        return Err(ApiError::bad_request(
+            "OBS server should be a host name or an IP address",
+        ));
+    }
+    Ok(host.to_string())
+}
+
+fn clean_obs_password(password: &str) -> Result<String, ApiError> {
+    let password = password.trim();
+    if password.chars().count() > 256 {
+        return Err(ApiError::bad_request("OBS password is too long"));
+    }
+    if password.chars().any(char::is_control) {
+        return Err(ApiError::bad_request("OBS password has invalid characters"));
+    }
+    Ok(password.to_string())
 }
 
 pub async fn obs_scenes(State(state): State<AppState>) -> Result<Json<ObsSceneList>, ApiError> {

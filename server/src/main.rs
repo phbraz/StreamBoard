@@ -1,3 +1,5 @@
+#![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
+
 mod api;
 mod audio;
 mod config;
@@ -8,6 +10,8 @@ mod obs;
 mod protocol;
 mod static_files;
 mod store;
+#[cfg(windows)]
+mod tray;
 mod ws;
 
 use std::{path::PathBuf, sync::Arc, time::Duration};
@@ -35,6 +39,7 @@ const LIBRARY_SCAN_INTERVAL: Duration = Duration::from_secs(3);
 #[derive(Clone)]
 pub struct AppState {
     pub config: Arc<Config>,
+    pub config_path: PathBuf,
     pub server_state: Arc<RwLock<ServerState>>,
     pub broadcast: broadcast::Sender<ServerMessage>,
     pub audio: AudioHandle,
@@ -42,16 +47,33 @@ pub struct AppState {
     pub obs: Arc<Obs>,
 }
 
+fn main() {
+    if let Err(err) = run() {
+        eprintln!("{err:#}");
+        #[cfg(all(windows, not(debug_assertions)))]
+        tray::alert(&format!("{err:#}"));
+        std::process::exit(1);
+    }
+}
+
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn run() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(
             EnvFilter::try_from_default_env().unwrap_or_else(|_| "soundboard_server=info".into()),
         )
         .init();
 
-    let config_path = parse_config_arg();
-    let config = Config::load(config_path.as_deref())?;
+    let requested = parse_config_arg();
+    let config_path = requested
+        .clone()
+        .unwrap_or_else(|| config::config_dir().join("config.toml"));
+    let config = Config::load(requested.as_deref())?;
+    #[cfg(windows)]
+    if tray::focus_existing(&tray::board_url_from_bind(&config.server.bind)) {
+        tracing::info!("TheBoard is already running");
+        return Ok(());
+    }
     let data_dir = config::data_dir();
     tracing::info!(data_dir = %data_dir.display(), "starting");
     tracing::info!(
@@ -94,6 +116,7 @@ async fn main() -> anyhow::Result<()> {
     let obs = Arc::new(Obs::new(&config.obs));
     let state = AppState {
         config: Arc::new(config),
+        config_path,
         server_state,
         broadcast,
         audio,
@@ -129,6 +152,10 @@ async fn main() -> anyhow::Result<()> {
             get(api::obs_scenes).post(api::add_obs_scene),
         )
         .route(
+            "/api/obs/settings",
+            get(api::get_obs_settings).put(api::put_obs_settings),
+        )
+        .route(
             "/api/buttons/{id}",
             patch(api::update_button).delete(api::delete_button),
         )
@@ -147,11 +174,28 @@ async fn main() -> anyhow::Result<()> {
         }
     }
     axum::serve(listener, app)
-        .with_graceful_shutdown(async {
-            let _ = tokio::signal::ctrl_c().await;
-        })
+        .with_graceful_shutdown(shutdown_signal(addr))
         .await?;
     Ok(())
+}
+
+/// Stops the server on Ctrl+C. On Windows, Quit from the tray icon does the same.
+async fn shutdown_signal(addr: std::net::SocketAddr) {
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    #[cfg(windows)]
+    {
+        let url = tray::board_url(addr);
+        tray::spawn(url.clone(), tx);
+        if std::env::args().skip(1).any(|arg| arg == "--open") {
+            tray::open_url(&url);
+        }
+    }
+    #[cfg(not(windows))]
+    let _hold = tx;
+    tokio::select! {
+        _ = tokio::signal::ctrl_c() => {}
+        _ = rx => {}
+    }
 }
 
 /// Picks up files added to or removed from the sounds folder outside the app.

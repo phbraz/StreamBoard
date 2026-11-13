@@ -22,8 +22,14 @@ tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 ts-rs = "12.0.1"
 
 [target."cfg(windows)".dependencies]
+tray-icon = { version = "0.26.1", default-features = false }
 windows-sys = { version = "0.61.2", features = [
+    "Win32_Foundation",
+    "Win32_System_Threading",
     "Win32_UI_Input_KeyboardAndMouse",
     "Win32_UI_Shell",
     "Win32_UI_WindowsAndMessaging",
 ] }
+
+[target."cfg(windows)".build-dependencies]
+winresource = "0.1.34"

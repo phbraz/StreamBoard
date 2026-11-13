@@ -205,3 +205,34 @@ pub struct ObsSceneInfo {
     pub name: String,
     pub current: bool,
 }
+
+/// OBS websocket target currently saved on the server. The password itself is not returned.
+#[derive(Debug, Clone, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct ObsSettings {
+    pub host: String,
+    pub port: u16,
+    pub password_set: bool,
+}
+
+/// `password` absent keeps the saved password. An empty password clears it.
+#[derive(Debug, Clone, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct ObsSettingsUpdate {
+    pub host: String,
+    pub port: u16,
+    #[ts(optional)]
+    #[serde(default)]
+    pub password: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct ObsSettingsSaved {
+    pub settings: ObsSettings,
+    pub connected: bool,
+    pub message: String,
+}
