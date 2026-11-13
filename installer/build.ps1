@@ -1,5 +1,11 @@
 # Builds the current UI into the release exe, then compiles TheBoard-Setup.exe.
-# Requires Node, Rust, and Inno Setup 6. Does not install the app.
+# Pass -InstallerOnly when the release exe is already built (the GitHub workflow does this).
+# A full build needs Node, Rust, and Inno Setup 6. -InstallerOnly needs Inno Setup 6.
+# This script does not install the app.
+
+param(
+    [switch]$InstallerOnly
+)
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -7,19 +13,21 @@ Set-StrictMode -Version Latest
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
 
-Push-Location (Join-Path $root 'web')
-try {
-    npm ci
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-    npm run build
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-}
-finally {
-    Pop-Location
-}
+if (-not $InstallerOnly) {
+    Push-Location (Join-Path $root 'web')
+    try {
+        npm ci
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        npm run build
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    }
+    finally {
+        Pop-Location
+    }
 
-cargo build --release --locked -p soundboard-server
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    cargo build --release --locked -p soundboard-server
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
 
 $candidates = @(
     "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",

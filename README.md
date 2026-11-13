@@ -19,6 +19,7 @@ See [docs/DESIGN.md](docs/DESIGN.md) for the design notes.
 - `server/`: Rust server (axum): HTTP API, WebSocket, audio, actions. Serves the built UI.
 - `web/`: React + Vite + Tailwind UI.
 - `config/`: example config files.
+- `installer/`: Windows setup script. GitHub Actions compiles it into `TheBoard-Setup.exe`.
 
 ## Development
 
@@ -98,8 +99,12 @@ shortcut can already contain the arguments an app needs.
 
 ## Running the server on Windows
 
-The server runs on Windows: sounds play through the default output and
-hotkeys are sent with `SendInput`. Clients are just browsers, as on Linux.
+Download [TheBoard-Setup.exe](https://github.com/phbraz/deckboard/releases/latest)
+and run it. That is the install. Details are in [Install](#install).
+
+The server also runs from a `soundboard-server.exe` you build yourself. Sounds
+play through the default output and hotkeys are sent with `SendInput`. Clients
+are browsers, as on Linux.
 
 1. Get `soundboard-server.exe`, using any one of these:
    - Build it with Docker (Docker Desktop on Windows works). This writes the
@@ -131,6 +136,11 @@ On Windows, files live in `%APPDATA%\soundboard\`. That folder holds
 
 ### Install
 
+Each push to `master` builds `TheBoard-Setup.exe` and attaches it to the
+[latest release](https://github.com/phbraz/deckboard/releases/latest). The same
+file is on that workflow run as the artifact `TheBoard-Setup`. Inno Setup runs
+in that build. Running the downloaded setup is the whole install.
+
 Run `TheBoard-Setup.exe`. It installs for the current user into
 `%LocalAppData%\TheBoard` and adds:
 
@@ -148,8 +158,8 @@ The first time it listens on port 7878, Windows asks whether to allow it on
 private networks. Allow it on **Private**. Stop a dev server on port 7878
 before starting the installed copy; both want that port.
 
-To build that setup from this repo, install [Inno Setup 6](https://jrsoftware.org/isinfo.php)
-and run:
+To compile the setup on a Windows machine while changing the installer, install
+[Inno Setup 6](https://jrsoftware.org/isinfo.php) and run:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File installer/build.ps1
