@@ -99,7 +99,7 @@ shortcut can already contain the arguments an app needs.
 
 ## Running the server on Windows
 
-Download [StreamBoard-Setup.exe](https://github.com/phbraz/deckboard/releases/latest)
+Download [StreamBoard-Setup.exe](https://github.com/phbraz/StreamBoard/releases/latest)
 and run it. That is the install. Details are in [Install](#install).
 
 The server also runs from a `soundboard-server.exe` you build yourself. Sounds
@@ -137,7 +137,7 @@ On Windows, files live in `%APPDATA%\soundboard\`. That folder holds
 ### Install
 
 Each push to `master` builds `StreamBoard-Setup.exe` and attaches it to the
-[latest release](https://github.com/phbraz/deckboard/releases/latest). The same
+[latest release](https://github.com/phbraz/StreamBoard/releases/latest). The same
 file is on that workflow run as the artifact `StreamBoard-Setup`. Inno Setup runs
 in that build. Running the downloaded setup is the whole install.
 
