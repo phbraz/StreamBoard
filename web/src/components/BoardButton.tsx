@@ -44,7 +44,14 @@ export function BoardButton({
   serverOs,
   onPress,
 }: Props) {
-  const isSound = button.kind === 'sound'
+  const tone =
+    button.kind === 'sound'
+      ? `bg-linear-to-br ${gradientFor(button.id)}`
+      : button.kind === 'obs'
+        ? 'border border-white/10 bg-linear-to-br from-indigo-900 to-zinc-900'
+        : button.kind === 'app'
+          ? 'border border-white/10 bg-linear-to-br from-emerald-900 to-zinc-900'
+          : 'border border-white/10 bg-linear-to-br from-zinc-700 to-zinc-900'
 
   // Each animate-* class sets `animation`, so the one-off pop-in lives on the wrapper
   // and doesn't replay when the glow/shake on the button change.
@@ -53,11 +60,7 @@ export function BoardButton({
       <button
         type="button"
         onClick={onPress}
-        className={`relative flex aspect-square w-full flex-col items-center justify-center gap-1.5 overflow-hidden rounded-button p-2 text-sm font-semibold text-white shadow-lg shadow-black/40 transition duration-150 select-none hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0 active:scale-95 ${
-          isSound
-            ? `bg-linear-to-br ${gradientFor(button.id)}`
-            : 'border border-white/10 bg-linear-to-br from-zinc-700 to-zinc-900'
-        } ${playing ? 'animate-glow' : ''} ${feedback?.kind === 'error' ? 'animate-shake' : ''} ${
+        className={`relative flex aspect-square w-full flex-col items-center justify-center gap-1.5 overflow-hidden rounded-button p-2 text-sm font-semibold text-white shadow-lg shadow-black/40 transition duration-150 select-none hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0 active:scale-95 ${tone} ${playing ? 'animate-glow' : ''} ${feedback?.kind === 'error' ? 'animate-shake' : ''} ${
           editing ? 'outline-2 outline-offset-2 outline-white/40 outline-dashed' : ''
         }`}
       >
@@ -98,6 +101,16 @@ export function BoardButton({
         {button.kind === 'hotkey' && (
           <span className="relative rounded-md border border-white/15 bg-black/30 px-1.5 py-0.5 font-mono text-[0.65rem] font-normal text-white/80">
             {prettyCombo(button.keys, serverOs)}
+          </span>
+        )}
+        {button.kind === 'obs' && (
+          <span className="relative max-w-full truncate rounded-md border border-white/15 bg-black/30 px-1.5 py-0.5 text-[0.65rem] font-normal text-white/80">
+            {button.scene}
+          </span>
+        )}
+        {button.kind === 'app' && (
+          <span className="relative max-w-full truncate rounded-md border border-white/15 bg-black/30 px-1.5 py-0.5 text-[0.65rem] font-normal text-white/80">
+            {button.path.split(/[/\\]/).pop()}
           </span>
         )}
       </button>

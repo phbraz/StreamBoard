@@ -10,8 +10,9 @@ use anyhow::Context;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    hotkey,
+    hotkey, launch,
     library::{self, label_from_stem, slug},
+    obs,
     protocol::{BoardView, Button, ButtonPatch, SoundInfo},
 };
 
@@ -24,7 +25,10 @@ struct Board {
 
 impl Default for Board {
     fn default() -> Self {
-        Self { version: 1, buttons: Vec::new() }
+        Self {
+            version: 1,
+            buttons: Vec::new(),
+        }
     }
 }
 
@@ -102,7 +106,9 @@ impl Store {
     /// Supported files in the sounds folder that aren't loaded yet.
     pub fn unknown_files(&self) -> Vec<PathBuf> {
         let known: HashSet<&OsString> = self.sounds.values().map(|s| &s.file_name).collect();
-        let Ok(entries) = std::fs::read_dir(&self.sounds_dir) else { return Vec::new() };
+        let Ok(entries) = std::fs::read_dir(&self.sounds_dir) else {
+            return Vec::new();
+        };
         let mut files: Vec<PathBuf> = entries
             .filter_map(Result::ok)
             .filter(|e| !known.contains(&e.file_name()) && !self.failed.contains(&e.file_name()))
@@ -124,7 +130,12 @@ impl Store {
 
     /// Adds a decoded file to the library and gives it a button if none exists.
     /// Returns the sound id, or `None` if its id collides with another file.
-    pub fn register(&mut self, path: &Path, duration_ms: u32, label: Option<String>) -> Option<String> {
+    pub fn register(
+        &mut self,
+        path: &Path,
+        duration_ms: u32,
+        label: Option<String>,
+    ) -> Option<String> {
         let file_name = path.file_name()?.to_os_string();
         if self.sounds.values().any(|s| s.file_name == file_name) {
             return None;
@@ -141,7 +152,11 @@ impl Store {
         self.sounds.insert(
             id.clone(),
             SoundEntry {
-                info: SoundInfo { id: id.clone(), label: label.clone(), duration_ms },
+                info: SoundInfo {
+                    id: id.clone(),
+                    label: label.clone(),
+                    duration_ms,
+                },
                 file_name,
             },
         );
@@ -178,9 +193,9 @@ impl Store {
     pub fn prune_dangling(&mut self) -> bool {
         let before = self.board.buttons.len();
         let sounds = &self.sounds;
-        self.board
-            .buttons
-            .retain(|b| !matches!(b, Button::Sound { sound_id, .. } if !sounds.contains_key(sound_id)));
+        self.board.buttons.retain(
+            |b| !matches!(b, Button::Sound { sound_id, .. } if !sounds.contains_key(sound_id)),
+        );
         self.board.buttons.len() != before
     }
 
@@ -195,7 +210,13 @@ impl Store {
             .collect();
         let base = slug(base);
         (1..)
-            .map(|n| if n == 1 { base.clone() } else { format!("{base}-{n}") })
+            .map(|n| {
+                if n == 1 {
+                    base.clone()
+                } else {
+                    format!("{base}-{n}")
+                }
+            })
             .find(|id| !taken.contains(id))
             .expect("unbounded range")
     }
@@ -203,7 +224,35 @@ impl Store {
     pub fn add_hotkey(&mut self, label: &str, keys: &str) -> Result<Button, String> {
         let keys = hotkey::normalize(keys)?;
         let label = clean_label(label).unwrap_or_else(|| keys.clone());
-        let button = Button::Hotkey { id: new_id(), label, keys };
+        let button = Button::Hotkey {
+            id: new_id(),
+            label,
+            keys,
+        };
+        self.board.buttons.push(button.clone());
+        Ok(button)
+    }
+
+    pub fn add_obs_scene(&mut self, label: &str, scene: &str) -> Result<Button, String> {
+        let scene = obs::clean_scene_name(scene)?;
+        let label = clean_label(label).unwrap_or_else(|| scene.clone());
+        let button = Button::Obs {
+            id: new_id(),
+            label,
+            scene,
+        };
+        self.board.buttons.push(button.clone());
+        Ok(button)
+    }
+
+    pub fn add_app(&mut self, label: &str, path: &str) -> Result<Button, String> {
+        let path = launch::normalize_target(path)?;
+        let label = clean_label(label).unwrap_or_else(|| launch::label_from_path(&path));
+        let button = Button::App {
+            id: new_id(),
+            label,
+            path,
+        };
         self.board.buttons.push(button.clone());
         Ok(button)
     }
@@ -216,12 +265,28 @@ impl Store {
             .find(|b| b.id() == id)
             .ok_or("unknown button")?;
 
-        let new_keys = match (&*button, &patch.keys) {
-            (Button::Hotkey { .. }, Some(keys)) => Some(hotkey::normalize(keys)?),
-            (Button::Sound { .. }, Some(_)) => return Err("sound buttons have no keys".into()),
-            _ => None,
-        };
+        if patch.keys.is_some() && !matches!(button, Button::Hotkey { .. }) {
+            return Err("only hotkey buttons have keys".into());
+        }
+        if patch.scene.is_some() && !matches!(button, Button::Obs { .. }) {
+            return Err("only OBS buttons have a scene".into());
+        }
+        if patch.path.is_some() && !matches!(button, Button::App { .. }) {
+            return Err("only app buttons have a path".into());
+        }
+
         let new_label = patch.label.as_deref().and_then(clean_label);
+        let new_keys = patch.keys.as_deref().map(hotkey::normalize).transpose()?;
+        let new_scene = patch
+            .scene
+            .as_deref()
+            .map(obs::clean_scene_name)
+            .transpose()?;
+        let new_path = patch
+            .path
+            .as_deref()
+            .map(launch::normalize_target)
+            .transpose()?;
 
         match button {
             Button::Sound { label, .. } => {
@@ -237,6 +302,22 @@ impl Store {
                     *keys = k;
                 }
             }
+            Button::Obs { label, scene, .. } => {
+                if let Some(l) = new_label {
+                    *label = l;
+                }
+                if let Some(s) = new_scene {
+                    *scene = s;
+                }
+            }
+            Button::App { label, path, .. } => {
+                if let Some(l) = new_label {
+                    *label = l;
+                }
+                if let Some(p) = new_path {
+                    *path = p;
+                }
+            }
         }
         Ok(button.clone())
     }
@@ -244,10 +325,15 @@ impl Store {
     /// Removes a button. Deleting a sound button also deletes its file from the server.
     /// Returns the removed sound id, if any, so the caller can unload it.
     pub fn delete_button(&mut self, id: &str) -> Result<Option<String>, String> {
-        let pos = self.board.buttons.iter().position(|b| b.id() == id).ok_or("unknown button")?;
+        let pos = self
+            .board
+            .buttons
+            .iter()
+            .position(|b| b.id() == id)
+            .ok_or("unknown button")?;
         let sound_id = match self.board.buttons.remove(pos) {
             Button::Sound { sound_id, .. } => sound_id,
-            Button::Hotkey { .. } => return Ok(None),
+            Button::Hotkey { .. } | Button::Obs { .. } | Button::App { .. } => return Ok(None),
         };
         if let Some(entry) = self.sounds.remove(&sound_id) {
             let path = self.sounds_dir.join(&entry.file_name);
@@ -266,6 +352,8 @@ pub fn clean_label(label: &str) -> Option<String> {
 
 fn new_id() -> String {
     static COUNTER: AtomicU64 = AtomicU64::new(0);
-    let nanos = SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_nanos() as u64);
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |d| d.as_nanos() as u64);
     format!("b{:x}{:x}", nanos, COUNTER.fetch_add(1, Ordering::Relaxed))
 }

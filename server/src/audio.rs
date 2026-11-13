@@ -16,11 +16,25 @@ const POLL: Duration = Duration::from_millis(50);
 type Reply = oneshot::Sender<Result<(), String>>;
 
 enum Command {
-    Load { sound_id: String, buffer: SamplesBuffer },
-    Unload { sound_id: String },
-    Play { sound_id: String, device_id: String, reply: Reply },
-    Stop { sound_id: String, reply: Reply },
-    StopAll { reply: Reply },
+    Load {
+        sound_id: String,
+        buffer: SamplesBuffer,
+    },
+    Unload {
+        sound_id: String,
+    },
+    Play {
+        sound_id: String,
+        device_id: String,
+        reply: Reply,
+    },
+    Stop {
+        sound_id: String,
+        reply: Reply,
+    },
+    StopAll {
+        reply: Reply,
+    },
 }
 
 #[derive(Clone)]
@@ -38,7 +52,12 @@ impl AudioHandle {
     }
 
     pub async fn play(&self, sound_id: String, device_id: String) -> Result<(), String> {
-        self.call(|reply| Command::Play { sound_id, device_id, reply }).await
+        self.call(|reply| Command::Play {
+            sound_id,
+            device_id,
+            reply,
+        })
+        .await
     }
 
     pub async fn stop(&self, sound_id: String) -> Result<(), String> {
@@ -51,7 +70,9 @@ impl AudioHandle {
 
     async fn call(&self, cmd: impl FnOnce(Reply) -> Command) -> Result<(), String> {
         let (reply, rx) = oneshot::channel();
-        self.tx.send(cmd(reply)).map_err(|_| "audio thread stopped".to_string())?;
+        self.tx
+            .send(cmd(reply))
+            .map_err(|_| "audio thread stopped".to_string())?;
         rx.await.map_err(|_| "audio thread stopped".to_string())?
     }
 }
@@ -84,7 +105,9 @@ fn open_sink(output: &str) -> anyhow::Result<MixerDeviceSink> {
         .map(|d| (d.to_string(), d))
         .collect();
 
-    let exact = devices.iter().position(|(name, _)| name.to_lowercase() == wanted);
+    let exact = devices
+        .iter()
+        .position(|(name, _)| name.to_lowercase() == wanted);
     let index = match exact {
         Some(i) => i,
         None => {
@@ -98,11 +121,18 @@ fn open_sink(output: &str) -> anyhow::Result<MixerDeviceSink> {
                 [i] => *i,
                 [] => anyhow::bail!(
                     "no output device matches {output:?}. Available: {}",
-                    devices.iter().map(|(n, _)| format!("{n:?}")).collect::<Vec<_>>().join(", ")
+                    devices
+                        .iter()
+                        .map(|(n, _)| format!("{n:?}"))
+                        .collect::<Vec<_>>()
+                        .join(", ")
                 ),
                 many => anyhow::bail!(
                     "{output:?} matches several output devices, be more specific: {}",
-                    many.iter().map(|&i| format!("{:?}", devices[i].0)).collect::<Vec<_>>().join(", ")
+                    many.iter()
+                        .map(|&i| format!("{:?}", devices[i].0))
+                        .collect::<Vec<_>>()
+                        .join(", ")
                 ),
             }
         }
@@ -152,13 +182,21 @@ pub fn spawn(
                     voices.retain(|v| v.sound_id != sound_id);
                     changed = voices.len() != before;
                 }
-                Ok(Command::Play { sound_id, device_id, reply }) => {
+                Ok(Command::Play {
+                    sound_id,
+                    device_id,
+                    reply,
+                }) => {
                     let result = match buffers.get(&sound_id) {
                         Some(buffer) => {
                             let player = Player::connect_new(sink.mixer());
                             player.set_volume(master_volume);
                             player.append(buffer.clone());
-                            voices.push(Voice { sound_id, device_id, player });
+                            voices.push(Voice {
+                                sound_id,
+                                device_id,
+                                player,
+                            });
                             changed = true;
                             Ok(())
                         }

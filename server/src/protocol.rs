@@ -106,12 +106,27 @@ pub enum Button {
         label: String,
         keys: String,
     },
+    /// Switches the OBS program scene through obs-websocket.
+    Obs {
+        id: String,
+        label: String,
+        scene: String,
+    },
+    /// Starts an application on the server machine.
+    App {
+        id: String,
+        label: String,
+        path: String,
+    },
 }
 
 impl Button {
     pub fn id(&self) -> &str {
         match self {
-            Button::Sound { id, .. } | Button::Hotkey { id, .. } => id,
+            Button::Sound { id, .. }
+            | Button::Hotkey { id, .. }
+            | Button::Obs { id, .. }
+            | Button::App { id, .. } => id,
         }
     }
 }
@@ -145,4 +160,48 @@ pub struct ButtonPatch {
     pub label: Option<String>,
     #[ts(optional)]
     pub keys: Option<String>,
+    #[ts(optional)]
+    pub scene: Option<String>,
+    #[ts(optional)]
+    pub path: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, TS)]
+#[ts(export)]
+pub struct NewApp {
+    pub label: String,
+    pub path: String,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export)]
+pub struct AppList {
+    pub apps: Vec<AppInfo>,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export)]
+pub struct AppInfo {
+    pub name: String,
+    pub path: String,
+}
+
+#[derive(Debug, Clone, Deserialize, TS)]
+#[ts(export)]
+pub struct NewObsScene {
+    pub label: String,
+    pub scene: String,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export)]
+pub struct ObsSceneList {
+    pub scenes: Vec<ObsSceneInfo>,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export)]
+pub struct ObsSceneInfo {
+    pub name: String,
+    pub current: bool,
 }

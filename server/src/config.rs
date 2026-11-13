@@ -9,6 +9,7 @@ pub struct Config {
     pub server: ServerConfig,
     pub audio: AudioConfig,
     pub mic: MicConfig,
+    pub obs: ObsConfig,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -30,7 +31,9 @@ pub struct AudioConfig {
 
 impl AudioConfig {
     pub fn sounds_dir(&self) -> PathBuf {
-        self.sounds_dir.clone().unwrap_or_else(|| data_dir().join("sounds"))
+        self.sounds_dir
+            .clone()
+            .unwrap_or_else(|| data_dir().join("sounds"))
     }
 }
 
@@ -40,12 +43,39 @@ pub struct MicConfig {
     pub source: String,
 }
 
+#[derive(Clone, Deserialize)]
+#[serde(default)]
+pub struct ObsConfig {
+    pub host: String,
+    pub port: u16,
+    /// Empty means OBS has no websocket password.
+    pub password: String,
+}
+
+impl std::fmt::Debug for ObsConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ObsConfig")
+            .field("host", &self.host)
+            .field("port", &self.port)
+            .field(
+                "password",
+                &if self.password.is_empty() {
+                    "none"
+                } else {
+                    "set"
+                },
+            )
+            .finish()
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {
             server: ServerConfig::default(),
             audio: AudioConfig::default(),
             mic: MicConfig::default(),
+            obs: ObsConfig::default(),
         }
     }
 }
@@ -74,6 +104,16 @@ impl Default for MicConfig {
     fn default() -> Self {
         Self {
             source: "@DEFAULT_AUDIO_SOURCE@".into(),
+        }
+    }
+}
+
+impl Default for ObsConfig {
+    fn default() -> Self {
+        Self {
+            host: "127.0.0.1".into(),
+            port: 4455,
+            password: String::new(),
         }
     }
 }

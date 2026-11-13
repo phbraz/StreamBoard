@@ -1,8 +1,8 @@
 # Soundboard
 
 A LAN stream deck: press buttons on any PC, laptop or phone, and the target PC
-plays sounds (into Discord/OBS through a virtual mic) or runs actions (hotkeys,
-mic mute). See [docs/DESIGN.md](docs/DESIGN.md).
+plays sounds (into Discord/OBS through a virtual mic) or runs actions (hotkeys
+on this PC, OBS scene changes). See [docs/DESIGN.md](docs/DESIGN.md).
 
 ## Layout
 
@@ -39,6 +39,35 @@ cargo test -p soundboard-server
 - **Edit** lets you rename, re-key or delete buttons. Deleting a sound also deletes its file.
 
 The board is saved in `~/.local/share/soundboard/board.json`.
+
+## OBS scenes
+
+**+ OBS** adds a button that switches the program scene in OBS on this PC.
+OBS has to be running with its websocket server enabled:
+
+1. In OBS, open **Tools → WebSocket Server Settings**.
+2. Enable the server. The default port is `4455`.
+3. If you set a password, put the same one in `config.toml`:
+
+```toml
+[obs]
+host = "127.0.0.1"
+port = 4455
+password = "the-password-from-obs"
+```
+
+The server connects when you open **+ OBS** or press a scene button, so it still
+starts when OBS is closed. A failed press shows the OBS error on the board.
+
+## Apps
+
+**+ App** starts a program on the PC running the server. Pick a Start menu
+shortcut, or paste the path to an `.exe` or `.lnk`. On Linux, pick a
+`.desktop` file or an executable (`gio launch` is used for desktop files).
+
+The server starts that file directly. It does not run a command line, and it
+refuses shells and scripts (`cmd`, PowerShell, `.bat`, and the like). A
+shortcut can already contain the arguments an app needs.
 
 ## Reaching it from other devices
 

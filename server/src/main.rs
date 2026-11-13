@@ -2,7 +2,9 @@ mod api;
 mod audio;
 mod config;
 mod hotkey;
+mod launch;
 mod library;
+mod obs;
 mod protocol;
 mod static_files;
 mod store;
@@ -23,6 +25,7 @@ use tracing_subscriber::EnvFilter;
 use crate::{
     audio::AudioHandle,
     config::Config,
+    obs::Obs,
     protocol::{ServerMessage, ServerState},
     store::Store,
 };
@@ -36,6 +39,7 @@ pub struct AppState {
     pub broadcast: broadcast::Sender<ServerMessage>,
     pub audio: AudioHandle,
     pub store: Arc<Mutex<Store>>,
+    pub obs: Arc<Obs>,
 }
 
 #[tokio::main]
@@ -56,7 +60,11 @@ async fn main() -> anyhow::Result<()> {
         "audio output devices"
     );
 
-    let store = Store::open(config.audio.sounds_dir(), &data_dir, config.audio.max_upload_mb)?;
+    let store = Store::open(
+        config.audio.sounds_dir(),
+        &data_dir,
+        config.audio.max_upload_mb,
+    )?;
 
     let (broadcast, _) = broadcast::channel(64);
     let server_state = Arc::new(RwLock::new(ServerState::default()));
@@ -64,20 +72,33 @@ async fn main() -> anyhow::Result<()> {
     let audio = {
         let server_state = server_state.clone();
         let broadcast = broadcast.clone();
-        audio::spawn(config.audio.output.clone(), config.audio.master_volume, move |playing| {
-            let mut state = server_state.blocking_write();
-            state.playing = playing;
-            let _ = broadcast.send(ServerMessage::State { state: state.clone() });
-        })?
+        audio::spawn(
+            config.audio.output.clone(),
+            config.audio.master_volume,
+            move |playing| {
+                let mut state = server_state.blocking_write();
+                state.playing = playing;
+                let _ = broadcast.send(ServerMessage::State {
+                    state: state.clone(),
+                });
+            },
+        )?
     };
 
     let upload_limit = usize::try_from(config.audio.max_upload_mb * 1024 * 1024)?;
+    tracing::info!(
+        host = %config.obs.host,
+        port = config.obs.port,
+        "OBS websocket (connects when a scene button is used)"
+    );
+    let obs = Arc::new(Obs::new(&config.obs));
     let state = AppState {
         config: Arc::new(config),
         server_state,
         broadcast,
         audio,
         store: Arc::new(Mutex::new(store)),
+        obs,
     };
 
     sync_library(&state).await;
@@ -102,7 +123,15 @@ async fn main() -> anyhow::Result<()> {
             post(api::upload_sound).layer(DefaultBodyLimit::max(upload_limit)),
         )
         .route("/api/hotkeys", post(api::add_hotkey))
-        .route("/api/buttons/{id}", patch(api::update_button).delete(api::delete_button))
+        .route("/api/apps", get(api::list_apps).post(api::add_app))
+        .route(
+            "/api/obs/scenes",
+            get(api::obs_scenes).post(api::add_obs_scene),
+        )
+        .route(
+            "/api/buttons/{id}",
+            patch(api::update_button).delete(api::delete_button),
+        )
         .route("/ws", get(ws::handler))
         .fallback(static_files::handler)
         .layer(TraceLayer::new_for_http())
@@ -190,7 +219,11 @@ async fn health() -> Json<serde_json::Value> {
 fn lan_ip() -> Option<std::net::IpAddr> {
     let socket = std::net::UdpSocket::bind("0.0.0.0:0").ok()?;
     socket.connect("192.0.2.1:9").ok()?;
-    socket.local_addr().ok().map(|a| a.ip()).filter(|ip| !ip.is_loopback())
+    socket
+        .local_addr()
+        .ok()
+        .map(|a| a.ip())
+        .filter(|ip| !ip.is_loopback())
 }
 
 fn parse_config_arg() -> Option<PathBuf> {

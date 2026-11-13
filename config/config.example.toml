@@ -14,3 +14,8 @@ max_upload_mb = 20
 
 [mic]
 source = "@DEFAULT_AUDIO_SOURCE@"  # the real mic, not the virtual one
+
+[obs]
+host = "127.0.0.1"                 # OBS websocket. Connects when you list or switch scenes.
+port = 4455
+password = ""                      # leave empty when OBS has no websocket password

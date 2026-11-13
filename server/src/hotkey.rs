@@ -21,16 +21,33 @@ struct KeyDef {
 }
 
 const fn key(name: &'static str, aliases: &'static [&'static str], linux: u16, vk: u16) -> KeyDef {
-    KeyDef { name, aliases, linux, vk, extended: false }
+    KeyDef {
+        name,
+        aliases,
+        linux,
+        vk,
+        extended: false,
+    }
 }
 
 const fn ext(name: &'static str, aliases: &'static [&'static str], linux: u16, vk: u16) -> KeyDef {
-    KeyDef { name, aliases, linux, vk, extended: true }
+    KeyDef {
+        name,
+        aliases,
+        linux,
+        vk,
+        extended: true,
+    }
 }
 
 /// Listed in the order they're pressed and displayed.
 const MODIFIERS: &[KeyDef] = &[
-    ext("super", &["meta", "win", "windows", "cmd", "mod", "logo"], 125, 0x5B),
+    ext(
+        "super",
+        &["meta", "win", "windows", "cmd", "mod", "logo"],
+        125,
+        0x5B,
+    ),
     key("ctrl", &["control", "ctl"], 29, 0xA2),
     key("alt", &["option", "opt"], 56, 0xA4),
     ext("altgr", &[], 100, 0xA5),
@@ -39,43 +56,81 @@ const MODIFIERS: &[KeyDef] = &[
 
 const KEYS: &[KeyDef] = &[
     key("escape", &["esc"], 1, 0x1B),
-    key("1", &[], 2, 0x31), key("2", &[], 3, 0x32), key("3", &[], 4, 0x33),
-    key("4", &[], 5, 0x34), key("5", &[], 6, 0x35), key("6", &[], 7, 0x36),
-    key("7", &[], 8, 0x37), key("8", &[], 9, 0x38), key("9", &[], 10, 0x39),
+    key("1", &[], 2, 0x31),
+    key("2", &[], 3, 0x32),
+    key("3", &[], 4, 0x33),
+    key("4", &[], 5, 0x34),
+    key("5", &[], 6, 0x35),
+    key("6", &[], 7, 0x36),
+    key("7", &[], 8, 0x37),
+    key("8", &[], 9, 0x38),
+    key("9", &[], 10, 0x39),
     key("0", &[], 11, 0x30),
     key("minus", &["-"], 12, 0xBD),
     key("equal", &["="], 13, 0xBB),
     key("backspace", &[], 14, 0x08),
     key("tab", &[], 15, 0x09),
-    key("q", &[], 16, 0x51), key("w", &[], 17, 0x57), key("e", &[], 18, 0x45),
-    key("r", &[], 19, 0x52), key("t", &[], 20, 0x54), key("y", &[], 21, 0x59),
-    key("u", &[], 22, 0x55), key("i", &[], 23, 0x49), key("o", &[], 24, 0x4F),
+    key("q", &[], 16, 0x51),
+    key("w", &[], 17, 0x57),
+    key("e", &[], 18, 0x45),
+    key("r", &[], 19, 0x52),
+    key("t", &[], 20, 0x54),
+    key("y", &[], 21, 0x59),
+    key("u", &[], 22, 0x55),
+    key("i", &[], 23, 0x49),
+    key("o", &[], 24, 0x4F),
     key("p", &[], 25, 0x50),
     key("leftbracket", &["["], 26, 0xDB),
     key("rightbracket", &["]"], 27, 0xDD),
     key("enter", &["return"], 28, 0x0D),
-    key("a", &[], 30, 0x41), key("s", &[], 31, 0x53), key("d", &[], 32, 0x44),
-    key("f", &[], 33, 0x46), key("g", &[], 34, 0x47), key("h", &[], 35, 0x48),
-    key("j", &[], 36, 0x4A), key("k", &[], 37, 0x4B), key("l", &[], 38, 0x4C),
+    key("a", &[], 30, 0x41),
+    key("s", &[], 31, 0x53),
+    key("d", &[], 32, 0x44),
+    key("f", &[], 33, 0x46),
+    key("g", &[], 34, 0x47),
+    key("h", &[], 35, 0x48),
+    key("j", &[], 36, 0x4A),
+    key("k", &[], 37, 0x4B),
+    key("l", &[], 38, 0x4C),
     key("semicolon", &[";"], 39, 0xBA),
     key("apostrophe", &["'"], 40, 0xDE),
     key("grave", &["`"], 41, 0xC0),
     key("backslash", &["\\"], 43, 0xDC),
-    key("z", &[], 44, 0x5A), key("x", &[], 45, 0x58), key("c", &[], 46, 0x43),
-    key("v", &[], 47, 0x56), key("b", &[], 48, 0x42), key("n", &[], 49, 0x4E),
+    key("z", &[], 44, 0x5A),
+    key("x", &[], 45, 0x58),
+    key("c", &[], 46, 0x43),
+    key("v", &[], 47, 0x56),
+    key("b", &[], 48, 0x42),
+    key("n", &[], 49, 0x4E),
     key("m", &[], 50, 0x4D),
     key("comma", &[","], 51, 0xBC),
     key("period", &["."], 52, 0xBE),
     key("slash", &["/"], 53, 0xBF),
     key("space", &[], 57, 0x20),
-    key("f1", &[], 59, 0x70), key("f2", &[], 60, 0x71), key("f3", &[], 61, 0x72),
-    key("f4", &[], 62, 0x73), key("f5", &[], 63, 0x74), key("f6", &[], 64, 0x75),
-    key("f7", &[], 65, 0x76), key("f8", &[], 66, 0x77), key("f9", &[], 67, 0x78),
-    key("f10", &[], 68, 0x79), key("f11", &[], 87, 0x7A), key("f12", &[], 88, 0x7B),
-    key("f13", &[], 183, 0x7C), key("f14", &[], 184, 0x7D), key("f15", &[], 185, 0x7E),
-    key("f16", &[], 186, 0x7F), key("f17", &[], 187, 0x80), key("f18", &[], 188, 0x81),
-    key("f19", &[], 189, 0x82), key("f20", &[], 190, 0x83), key("f21", &[], 191, 0x84),
-    key("f22", &[], 192, 0x85), key("f23", &[], 193, 0x86), key("f24", &[], 194, 0x87),
+    key("f1", &[], 59, 0x70),
+    key("f2", &[], 60, 0x71),
+    key("f3", &[], 61, 0x72),
+    key("f4", &[], 62, 0x73),
+    key("f5", &[], 63, 0x74),
+    key("f6", &[], 64, 0x75),
+    key("f7", &[], 65, 0x76),
+    key("f8", &[], 66, 0x77),
+    key("f9", &[], 67, 0x78),
+    key("f10", &[], 68, 0x79),
+    key("f11", &[], 87, 0x7A),
+    key("f12", &[], 88, 0x7B),
+    key("f13", &[], 183, 0x7C),
+    key("f14", &[], 184, 0x7D),
+    key("f15", &[], 185, 0x7E),
+    key("f16", &[], 186, 0x7F),
+    key("f17", &[], 187, 0x80),
+    key("f18", &[], 188, 0x81),
+    key("f19", &[], 189, 0x82),
+    key("f20", &[], 190, 0x83),
+    key("f21", &[], 191, 0x84),
+    key("f22", &[], 192, 0x85),
+    key("f23", &[], 193, 0x86),
+    key("f24", &[], 194, 0x87),
     ext("printscreen", &["print", "sysrq"], 99, 0x2C),
     ext("home", &[], 102, 0x24),
     ext("up", &[], 103, 0x26),
@@ -108,7 +163,9 @@ impl Combo {
 }
 
 fn lookup(table: &'static [KeyDef], name: &str) -> Option<&'static KeyDef> {
-    table.iter().find(|k| k.name == name || k.aliases.contains(&name))
+    table
+        .iter()
+        .find(|k| k.name == name || k.aliases.contains(&name))
 }
 
 fn parse(combo: &str) -> Result<Combo, String> {
@@ -161,7 +218,11 @@ mod platform {
         let mut args: Vec<String> = combo.keys().map(|k| format!("{}:1", k.linux)).collect();
         args.extend(combo.keys().rev().map(|k| format!("{}:0", k.linux)));
 
-        let output = Command::new("ydotool").arg("key").args(&args).kill_on_drop(true).output();
+        let output = Command::new("ydotool")
+            .arg("key")
+            .args(&args)
+            .kill_on_drop(true)
+            .output();
         let output = tokio::time::timeout(SEND_TIMEOUT, output)
             .await
             .map_err(|_| "ydotool timed out (is ydotoold running?)".to_string())?
@@ -182,20 +243,31 @@ mod platform {
 #[cfg(windows)]
 mod platform {
     use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
-        INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_EXTENDEDKEY, KEYEVENTF_KEYUP, SendInput,
+        INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_EXTENDEDKEY, KEYEVENTF_KEYUP,
+        SendInput,
     };
 
     use super::{Combo, KeyDef};
 
     fn input(key: &KeyDef, up: bool) -> INPUT {
-        let mut flags = if key.extended { KEYEVENTF_EXTENDEDKEY } else { 0 };
+        let mut flags = if key.extended {
+            KEYEVENTF_EXTENDEDKEY
+        } else {
+            0
+        };
         if up {
             flags |= KEYEVENTF_KEYUP;
         }
         INPUT {
             r#type: INPUT_KEYBOARD,
             Anonymous: INPUT_0 {
-                ki: KEYBDINPUT { wVk: key.vk, wScan: 0, dwFlags: flags, time: 0, dwExtraInfo: 0 },
+                ki: KEYBDINPUT {
+                    wVk: key.vk,
+                    wScan: 0,
+                    dwFlags: flags,
+                    time: 0,
+                    dwExtraInfo: 0,
+                },
             },
         }
     }
@@ -206,7 +278,13 @@ mod platform {
 
         let sent = tokio::task::spawn_blocking(move || {
             // SAFETY: `inputs` is a valid, initialized slice of INPUT for the duration of the call.
-            unsafe { SendInput(inputs.len() as u32, inputs.as_ptr(), size_of::<INPUT>() as i32) as usize }
+            unsafe {
+                SendInput(
+                    inputs.len() as u32,
+                    inputs.as_ptr(),
+                    size_of::<INPUT>() as i32,
+                ) as usize
+            }
         });
         let expected = combo.keys().count() * 2;
         match sent.await {
@@ -222,7 +300,10 @@ mod platform {
     use super::Combo;
 
     pub async fn send(_combo: Combo) -> Result<(), String> {
-        Err(format!("hotkeys aren't supported on {} yet", std::env::consts::OS))
+        Err(format!(
+            "hotkeys aren't supported on {} yet",
+            std::env::consts::OS
+        ))
     }
 }
 

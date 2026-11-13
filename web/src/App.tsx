@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react'
+import { AppDialog } from './components/AppDialog'
 import { BoardButton, type Feedback } from './components/BoardButton'
 import { ButtonDialog } from './components/ButtonDialog'
+import { ObsDialog } from './components/ObsDialog'
 import { NowPlaying } from './components/NowPlaying'
 import { useSoundboard, type ConnectionStatus } from './hooks/useSoundboard'
-import { addHotkey, deleteButton, getBoard, updateButton, uploadSound } from './lib/api'
+import { addApp, addHotkey, addObsScene, deleteButton, getBoard, updateButton, uploadSound } from './lib/api'
 import type { BoardView, Button } from './protocol'
 
 const STATUS_STYLE: Record<ConnectionStatus, string> = {
@@ -17,7 +19,7 @@ const TOAST_MS = 2500
 const ERROR_TOAST_MS = 5000
 const FEEDBACK_MS = 700
 
-type Dialog = { mode: 'newHotkey' } | { mode: 'edit'; button: Button }
+type Dialog = { mode: 'newHotkey' } | { mode: 'newObs' } | { mode: 'newApp' } | { mode: 'edit'; button: Button }
 type Toast = { id: number; text: string; error: boolean }
 
 const addTile =
@@ -76,7 +78,7 @@ export default function App() {
     if (!ack.ok) {
       flash(button.id, 'error')
       notify(`${button.label}: ${ack.error ?? 'failed'}`, true)
-    } else if (button.kind === 'hotkey') {
+    } else if (button.kind === 'hotkey' || button.kind === 'obs' || button.kind === 'app') {
       flash(button.id, 'ok')
     }
   }
@@ -105,7 +107,7 @@ export default function App() {
       <header className="sticky top-0 z-10 border-b border-white/5 bg-board-bg/70 backdrop-blur-md">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-3">
           <h1 className="bg-linear-to-r from-rose-400 via-fuchsia-400 to-indigo-400 bg-clip-text text-xl font-bold tracking-tight text-transparent">
-            Soundboard
+            TheBoard
           </h1>
           <div className="flex items-center gap-3 text-sm text-board-muted">
             <span className="flex items-center gap-2" title={sb.status}>
@@ -158,14 +160,23 @@ export default function App() {
             <span className="text-2xl leading-none">+</span>
             Hotkey
           </button>
+          <button type="button" onClick={() => setDialog({ mode: 'newObs' })} className={addTile}>
+            <span className="text-2xl leading-none">+</span>
+            OBS
+          </button>
+          <button type="button" onClick={() => setDialog({ mode: 'newApp' })} className={addTile}>
+            <span className="text-2xl leading-none">+</span>
+            App
+          </button>
         </section>
 
         <input ref={fileInput} type="file" accept={ACCEPT} multiple hidden onChange={onFiles} />
 
         {board && board.buttons.length === 0 && (
           <p className="text-sm text-board-muted">
-            Add sounds with <strong>+ Sound</strong>, or copy files into{' '}
-            <code className="text-board-fg">{board.libraryDir}</code> on the server.
+            Add sounds with <strong>+ Sound</strong>, key combos with <strong>+ Hotkey</strong>, OBS scenes
+            with <strong>+ OBS</strong>, or programs on this PC with <strong>+ App</strong>. Copy sound files into{' '}
+            <code className="text-board-fg">{board.libraryDir}</code> on the server too.
           </p>
         )}
       </main>
@@ -219,7 +230,57 @@ export default function App() {
         />
       )}
 
-      {dialog?.mode === 'edit' && (
+      {dialog?.mode === 'newObs' && (
+        <ObsDialog
+          title="New OBS scene"
+          onSave={async (label, scene) => {
+            await addObsScene({ label, scene })
+          }}
+          onClose={() => setDialog(null)}
+        />
+      )}
+
+      {dialog?.mode === 'newApp' && (
+        <AppDialog
+          title="New app"
+          onSave={async (label, path) => {
+            await addApp({ label, path })
+          }}
+          onClose={() => setDialog(null)}
+        />
+      )}
+
+      {dialog?.mode === 'edit' && dialog.button.kind === 'app' && (
+        <AppDialog
+          title="Edit app"
+          initialLabel={dialog.button.label}
+          initialPath={dialog.button.path}
+          onSave={async (label, path) => {
+            await updateButton(dialog.button.id, { label, path })
+          }}
+          onDelete={async () => {
+            await deleteButton(dialog.button.id)
+          }}
+          onClose={() => setDialog(null)}
+        />
+      )}
+
+      {dialog?.mode === 'edit' && dialog.button.kind === 'obs' && (
+        <ObsDialog
+          title="Edit OBS scene"
+          initialLabel={dialog.button.label}
+          initialScene={dialog.button.scene}
+          onSave={async (label, scene) => {
+            await updateButton(dialog.button.id, { label, scene })
+          }}
+          onDelete={async () => {
+            await deleteButton(dialog.button.id)
+          }}
+          onClose={() => setDialog(null)}
+        />
+      )}
+
+      {dialog?.mode === 'edit' && (dialog.button.kind === 'sound' || dialog.button.kind === 'hotkey') && (
         <ButtonDialog
           title={dialog.button.kind === 'sound' ? 'Edit sound' : 'Edit hotkey'}
           initialLabel={dialog.button.label}

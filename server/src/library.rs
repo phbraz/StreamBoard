@@ -34,7 +34,10 @@ fn finish<R: Read + Seek + Send + Sync + 'static>(decoder: Decoder<R>) -> anyhow
     anyhow::ensure!(!samples.is_empty(), "no audio samples");
     let buffer = SamplesBuffer::new(channels, sample_rate, samples);
     let duration_ms = buffer.total_duration().map_or(0, |d| d.as_millis() as u32);
-    Ok(Decoded { buffer, duration_ms })
+    Ok(Decoded {
+        buffer,
+        duration_ms,
+    })
 }
 
 /// Lowercase, ASCII alphanumerics separated by single dashes.

@@ -11,7 +11,7 @@ use futures_util::{SinkExt, StreamExt};
 use tokio::sync::mpsc;
 
 use crate::{
-    AppState, hotkey,
+    AppState, hotkey, launch,
     protocol::{Button, ClientMessage, ServerMessage},
 };
 
@@ -25,9 +25,12 @@ async fn handle(socket: WebSocket, state: AppState) {
     let (mut sink, mut stream) = socket.split();
 
     let Some(device_id) = authenticate(&mut stream).await else {
-        let _ = send(&mut sink, &ServerMessage::Error {
-            message: "expected hello".into(),
-        })
+        let _ = send(
+            &mut sink,
+            &ServerMessage::Error {
+                message: "expected hello".into(),
+            },
+        )
         .await;
         return;
     };
@@ -81,7 +84,9 @@ async fn authenticate(stream: &mut futures_util::stream::SplitStream<WebSocket>)
         .await
         .ok()??
         .ok()?;
-    let Message::Text(text) = frame else { return None };
+    let Message::Text(text) = frame else {
+        return None;
+    };
     match serde_json::from_str::<ClientMessage>(&text).ok()? {
         ClientMessage::Hello { token: _ } => Some("dev".into()),
         _ => None,
@@ -92,29 +97,47 @@ async fn dispatch(msg: ClientMessage, state: &AppState, device_id: &str) -> Serv
     let (request_id, result) = match msg {
         ClientMessage::Ping => return ServerMessage::Pong,
         ClientMessage::Hello { .. } => {
-            return ServerMessage::Error { message: "already authenticated".into() };
+            return ServerMessage::Error {
+                message: "already authenticated".into(),
+            };
         }
-        ClientMessage::Press { request_id, button_id } => {
+        ClientMessage::Press {
+            request_id,
+            button_id,
+        } => {
             let button = state.store.lock().await.button(&button_id);
             let result = match button {
                 Some(Button::Sound { sound_id, .. }) => {
                     state.audio.play(sound_id, device_id.to_string()).await
                 }
                 Some(Button::Hotkey { keys, .. }) => hotkey::send(&keys).await,
+                Some(Button::Obs { scene, .. }) => {
+                    state.obs.set_scene(&scene).await.map_err(|e| e.to_string())
+                }
+                Some(Button::App { path, .. }) => launch::open(&path).await,
                 None => Err(format!("unknown button {button_id}")),
             };
             (request_id, result)
         }
-        ClientMessage::Play { request_id, sound_id } => {
-            (request_id, state.audio.play(sound_id, device_id.to_string()).await)
-        }
-        ClientMessage::Stop { request_id, sound_id } => {
-            (request_id, state.audio.stop(sound_id).await)
-        }
+        ClientMessage::Play {
+            request_id,
+            sound_id,
+        } => (
+            request_id,
+            state.audio.play(sound_id, device_id.to_string()).await,
+        ),
+        ClientMessage::Stop {
+            request_id,
+            sound_id,
+        } => (request_id, state.audio.stop(sound_id).await),
         ClientMessage::StopAll { request_id } => (request_id, state.audio.stop_all().await),
-        ClientMessage::RunAction { request_id, action_id: _ } => {
-            (request_id, Err("actions are not implemented yet".to_string()))
-        }
+        ClientMessage::RunAction {
+            request_id,
+            action_id: _,
+        } => (
+            request_id,
+            Err("actions are not implemented yet".to_string()),
+        ),
     };
     ServerMessage::Ack {
         request_id,
