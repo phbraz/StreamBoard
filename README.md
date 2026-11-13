@@ -1,8 +1,18 @@
-# Soundboard
+# TheBoard
 
-A LAN stream deck: press buttons on any PC, laptop or phone, and the target PC
-plays sounds (into Discord/OBS through a virtual mic) or runs actions (hotkeys
-on this PC, OBS scene changes). See [docs/DESIGN.md](docs/DESIGN.md).
+A LAN stream deck. Press a button on any PC, laptop, or phone, and the PC
+running TheBoard plays a sound, sends a hotkey, switches an OBS scene, or
+starts an app.
+
+Sounds that should show up in Discord, OBS, or another call have to go through
+a virtual audio device. Use [VB-Audio Virtual Cable](https://vb-audio.com/Cable/)
+or [SteelSeries Sonar](https://steelseries.com/gg/sonar). TheBoard plays into
+that device, and the other program selects it as its microphone. Details are
+in [Virtual audio](#virtual-audio).
+
+![The board, with sound buttons and shortcuts to add a sound, hotkey, OBS scene, or app](docs/screenshots/board.png)
+
+See [docs/DESIGN.md](docs/DESIGN.md) for the design notes.
 
 ## Layout
 
@@ -56,6 +66,8 @@ port = 4455
 password = "the-password-from-obs"
 ```
 
+![OBS connection settings](docs/screenshots/obs.png)
+
 The server connects when you open **+ OBS** or press a scene button, so it still
 starts when OBS is closed. A failed press shows the OBS error on the board.
 
@@ -105,7 +117,7 @@ hotkeys are sent with `SendInput`. Clients are just browsers, as on Linux.
      cargo zigbuild --release -p soundboard-server --target x86_64-pc-windows-gnu
      ```
    - Build it on Windows with Rust and Node installed: `cd web; npm ci; npm run build; cd ..; cargo build --release`.
-2. Run it. A debug `cargo run` prints the address to open on your phone, e.g. `open http://192.168.1.50:7878`, and Ctrl+C stops it. A release build keeps the console hidden and adds a tray icon with **Open** and **Quit**.
+2. Run it. A debug `cargo run` prints the address to open on your phone, e.g. `open http://192.168.1.50:7878`, and Ctrl+C stops it. A release build keeps the console hidden and adds a tray icon with **Open**, **OBS settings**, and **Quit**.
 3. Allow it through Windows Firewall. Accept the prompt on first run and tick
    **Private networks**, or from an admin PowerShell:
    ```powershell
@@ -117,37 +129,66 @@ hotkeys are sent with `SendInput`. Clients are just browsers, as on Linux.
 On Windows, files live in `%APPDATA%\soundboard\`. That folder holds
 `config.toml`, `board.json` and `sounds\`.
 
-### Windows installer
+### Install
 
-The setup installs the finished release exe for the current user. It adds a
-desktop shortcut, a Start menu shortcut, a Startup shortcut, and an uninstaller. The Startup copy
-runs in the tray. **Open** (or double-click the icon) shows the board. **Quit**
-stops the server. A second launch opens the board in the browser.
+Run `TheBoard-Setup.exe`. It installs for the current user into
+`%LocalAppData%\TheBoard` and adds:
 
-Build the UI and the release exe, then compile the setup with [Inno Setup 6](https://jrsoftware.org/isinfo.php):
+- a desktop shortcut
+- a Start menu shortcut
+- a Startup shortcut, so TheBoard is in the tray after you sign in
+- an uninstaller
+
+The tray icon is the purple board mark. **Open** (or a double-click) shows the
+board. **OBS settings** opens the connection form. **Quit** stops the server.
+Launching TheBoard again while it is already running opens the board in the
+browser.
+
+The first time it listens on port 7878, Windows asks whether to allow it on
+private networks. Allow it on **Private**. Stop a dev server on port 7878
+before starting the installed copy; both want that port.
+
+To build that setup from this repo, install [Inno Setup 6](https://jrsoftware.org/isinfo.php)
+and run:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File installer/build.ps1
 ```
 
-That writes `dist/TheBoard-Setup.exe`. The first time the app listens on port
-7878, Windows asks whether to allow it on private networks. Uninstall leaves
-`%APPDATA%\soundboard` on disk. Stop a dev server on port 7878 before starting
-the installed copy; both want that port.
+That writes `dist/TheBoard-Setup.exe`. The script builds the UI and the release
+exe first. The installer only copies the finished exe.
 
-### Choosing the audio output
+### Uninstall
 
-By default sounds play on the system default output. Set `audio.output` in
-`config.toml` to play on a specific device instead, for example a virtual device
-that Discord or OBS uses as its microphone:
+In Windows, open **Settings → Apps → Installed apps**, choose **TheBoard**, and
+uninstall it. The same uninstaller is in the Start menu under **TheBoard**.
+
+Uninstall removes the program, the desktop and Start menu shortcuts, and the
+Startup entry. Sounds, the board, and `config.toml` stay in
+`%APPDATA%\soundboard`. Delete that folder when you also want the library gone.
+
+### Virtual audio
+
+Speakers are enough when you only want the room to hear a sound. Discord, OBS,
+and other calls need a virtual device they can select as a microphone. Install
+one of these on the PC running TheBoard:
+
+**SteelSeries Sonar.** Install SteelSeries GG and turn Sonar on. Set
+`audio.output` to the channel you want, such as `Sonar - Microphone`,
+`Sonar - Stream`, or `Sonar - Aux`. In Discord, pick that same Sonar channel
+as the input device.
+
+**VB-Audio Virtual Cable.** Install [VB-CABLE](https://vb-audio.com/Cable/) and
+reboot if the installer asks you to. Set TheBoard's output to `CABLE Input`.
+In Discord or OBS, set the microphone to `CABLE Output`.
 
 ```toml
 [audio]
-output = "Sonar - Microphone"   # case-insensitive; a unique part of the name is enough
+output = "Sonar - Microphone"   # or "CABLE Input". Case-insensitive; a unique part of the name is enough
 ```
 
-At startup the server logs every output it can see (`audio output devices`), and
-it refuses to start with a clear error if the name doesn't match exactly one device.
+At startup the server logs every output it can see (`audio output devices`).
+It refuses to start if the name matches more than one device, or none.
 
 Hotkey notes for Windows:
 - `super` is the Win key, so `win+shift+s` works as a combo.

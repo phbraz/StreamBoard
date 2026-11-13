@@ -7,7 +7,9 @@ mdns = true                        # advertise soundboard.local
 [audio]
 output = "default"                 # "default", or an output device name (case-insensitive, a unique part is enough).
                                    # The server logs every available output at startup.
-                                   # Windows + SteelSeries Sonar: "Sonar - Microphone" or "Sonar - Stream"
+                                   # For Discord/OBS, use a virtual device:
+                                   #   SteelSeries Sonar: "Sonar - Microphone", "Sonar - Stream", or "Sonar - Aux"
+                                   #   VB-Audio Virtual Cable: "CABLE Input" (set the other app's mic to "CABLE Output")
 master_volume = 1.0
 max_upload_mb = 20
 # sounds_dir = "/home/you/Music/soundboard"   # server-side sound library; default ~/.local/share/soundboard/sounds
