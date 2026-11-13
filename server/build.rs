@@ -1,5 +1,5 @@
 fn main() {
-    println!("cargo:rerun-if-changed=../assets/theboard.ico");
+    println!("cargo:rerun-if-changed=../assets/streamboard.ico");
     #[cfg(target_os = "windows")]
     embed_app_icon();
 }
@@ -7,6 +7,6 @@ fn main() {
 #[cfg(target_os = "windows")]
 fn embed_app_icon() {
     let mut resource = winresource::WindowsResource::new();
-    resource.set_icon("../assets/theboard.ico");
-    resource.compile().expect("embedding the TheBoard icon");
+    resource.set_icon("../assets/streamboard.ico");
+    resource.compile().expect("embedding the StreamBoard icon");
 }

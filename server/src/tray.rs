@@ -22,7 +22,7 @@ use windows_sys::Win32::{
     },
 };
 
-const MUTEX_NAME: &str = "Local\\TheBoard";
+const MUTEX_NAME: &str = "Local\\StreamBoard";
 
 /// Address the tray's Open item should load. An unspecified bind becomes localhost.
 pub fn board_url(addr: SocketAddr) -> String {
@@ -43,7 +43,7 @@ pub fn board_url_from_bind(bind: &str) -> String {
         .unwrap_or_else(|_| "http://127.0.0.1:7878".to_string())
 }
 
-/// When another TheBoard process is already running, open `url` and return true.
+/// When another StreamBoard process is already running, open `url` and return true.
 pub fn focus_existing(url: &str) -> bool {
     if hold_single_instance() {
         false
@@ -76,7 +76,7 @@ pub fn open_url(url: &str) {
 #[cfg_attr(debug_assertions, allow(dead_code))]
 pub fn alert(message: &str) {
     let text = wide(message);
-    let title = wide("TheBoard");
+    let title = wide("StreamBoard");
     unsafe {
         MessageBoxW(
             std::ptr::null_mut(),
@@ -91,7 +91,7 @@ pub fn alert(message: &str) {
 pub fn spawn(url: String, quit: tokio::sync::oneshot::Sender<()>) {
     let (boot_tx, boot_rx) = std::sync::mpsc::sync_channel(1);
     let started = std::thread::Builder::new()
-        .name("theboard-tray".into())
+        .name("streamboard-tray".into())
         .spawn(move || {
             let Ok(quit) = boot_rx.recv() else {
                 return;
@@ -102,7 +102,7 @@ pub fn spawn(url: String, quit: tokio::sync::oneshot::Sender<()>) {
         tracing::error!("tray thread failed to start: {err}");
         #[cfg(not(debug_assertions))]
         alert(&format!(
-            "TheBoard could not start its tray icon, so it will exit.\n\n{err}"
+            "StreamBoard could not start its tray icon, so it will exit.\n\n{err}"
         ));
         #[cfg(debug_assertions)]
         std::mem::forget(quit);
@@ -138,7 +138,7 @@ fn run_tray(url: String, quit: tokio::sync::oneshot::Sender<()>) -> Result<(), S
         tracing::error!("tray icon: {err}");
         #[cfg(not(debug_assertions))]
         alert(&format!(
-            "TheBoard could not start its tray icon, so it will exit.\n\n{err}"
+            "StreamBoard could not start its tray icon, so it will exit.\n\n{err}"
         ));
     }
     result
@@ -158,7 +158,7 @@ fn pump_tray(quit_guard: &mut QuitOnDrop, url: String) -> Result<(), String> {
     let icon = tray_icon()?;
     let _tray: TrayIcon = tray_icon::TrayIconBuilder::new()
         .with_menu(Box::new(menu))
-        .with_tooltip("TheBoard")
+        .with_tooltip("StreamBoard")
         .with_icon(icon)
         .with_menu_on_left_click(false)
         .with_menu_on_right_click(true)
@@ -213,7 +213,7 @@ fn drain_events(
 
 fn tray_icon() -> Result<Icon, String> {
     const SIZE: u32 = 32;
-    let rgba = include_bytes!("../../assets/theboard-32.rgba");
+    let rgba = include_bytes!("../../assets/streamboard-32.rgba");
     Icon::from_rgba(rgba.to_vec(), SIZE, SIZE).map_err(|err| format!("icon: {err:?}"))
 }
 

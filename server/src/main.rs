@@ -71,7 +71,7 @@ async fn run() -> anyhow::Result<()> {
     let config = Config::load(requested.as_deref())?;
     #[cfg(windows)]
     if tray::focus_existing(&tray::board_url_from_bind(&config.server.bind)) {
-        tracing::info!("TheBoard is already running");
+        tracing::info!("StreamBoard is already running");
         return Ok(());
     }
     let data_dir = config::data_dir();

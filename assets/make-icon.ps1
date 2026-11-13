@@ -1,7 +1,7 @@
-# Builds assets/theboard.ico from assets/theboard.png. Windows only.
+# Builds assets/streamboard.ico from assets/streamboard.png. Windows only.
 Add-Type -AssemblyName System.Drawing
 
-$srcPath = Join-Path $PSScriptRoot "theboard.png"
+$srcPath = Join-Path $PSScriptRoot "streamboard.png"
 $src = [System.Drawing.Image]::FromFile($srcPath)
 $sizes = @(16, 24, 32, 48, 64, 256)
 $images = New-Object System.Collections.Generic.List[byte[]]
@@ -38,7 +38,7 @@ foreach ($size in $sizes) {
                 $rgba[$dstIndex + 3] = $raw[$srcIndex + 3]
             }
         }
-        [System.IO.File]::WriteAllBytes((Join-Path $PSScriptRoot "theboard-32.rgba"), $rgba)
+        [System.IO.File]::WriteAllBytes((Join-Path $PSScriptRoot "streamboard-32.rgba"), $rgba)
     }
     $bmp.Dispose()
     $stream.Dispose()
@@ -72,5 +72,5 @@ for ($index = 0; $index -lt $count; $index++) {
 foreach ($image in $images) {
     $file.AddRange([byte[]]$image)
 }
-[System.IO.File]::WriteAllBytes((Join-Path $PSScriptRoot "theboard.ico"), $file.ToArray())
-Write-Host "wrote theboard.ico ($($file.Count) bytes)"
+[System.IO.File]::WriteAllBytes((Join-Path $PSScriptRoot "streamboard.ico"), $file.ToArray())
+Write-Host "wrote streamboard.ico ($($file.Count) bytes)"

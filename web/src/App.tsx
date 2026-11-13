@@ -124,9 +124,9 @@ export default function App() {
       <header className="sticky top-0 z-10 border-b border-white/5 bg-board-bg/70 backdrop-blur-md">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-3">
           <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight">
-            <img src="/theboard.png" alt="" className="size-8 rounded-lg" />
+            <img src="/streamboard.png" alt="" className="size-8 rounded-lg" />
             <span className="bg-linear-to-r from-rose-400 via-fuchsia-400 to-indigo-400 bg-clip-text text-transparent">
-              TheBoard
+              StreamBoard
             </span>
           </h1>
           <div className="flex items-center gap-3 text-sm text-board-muted">

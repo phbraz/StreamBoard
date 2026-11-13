@@ -1,4 +1,4 @@
-# Builds the current UI into the release exe, then compiles TheBoard-Setup.exe.
+# Builds the current UI into the release exe, then compiles StreamBoard-Setup.exe.
 # Pass -InstallerOnly when the release exe is already built (the GitHub workflow does this).
 # A full build needs Node, Rust, and Inno Setup 6. -InstallerOnly needs Inno Setup 6.
 # This script does not install the app.
@@ -45,9 +45,9 @@ if ($cargo -notmatch '(?m)^version\s*=\s*"([^"]+)"') {
 }
 $version = $Matches[1]
 
-& $iscc "/DMyAppVersion=$version" (Join-Path $root 'installer\TheBoard.iss')
+& $iscc "/DMyAppVersion=$version" (Join-Path $root 'installer\StreamBoard.iss')
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
-Write-Host "Wrote $(Join-Path $root 'dist\TheBoard-Setup.exe')"
+Write-Host "Wrote $(Join-Path $root 'dist\StreamBoard-Setup.exe')"

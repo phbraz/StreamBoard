@@ -80,7 +80,7 @@ export function ObsSettingsDialog({ onClose }: Props) {
       >
         <h2 className="text-lg font-semibold text-board-fg">OBS connection</h2>
         <p className="mt-1 text-sm text-board-muted">
-          Host, port, and password from OBS: Tools → WebSocket Server Settings. Saved on this PC for TheBoard.
+          Host, port, and password from OBS: Tools → WebSocket Server Settings. Saved on this PC for StreamBoard.
         </p>
 
         <label className="mt-4 block text-sm text-board-muted">

@@ -1,12 +1,12 @@
-# TheBoard
+# StreamBoard
 
 A LAN stream deck. Press a button on any PC, laptop, or phone, and the PC
-running TheBoard plays a sound, sends a hotkey, switches an OBS scene, or
+running StreamBoard plays a sound, sends a hotkey, switches an OBS scene, or
 starts an app.
 
 Sounds that should show up in Discord, OBS, or another call have to go through
 a virtual audio device. Use [VB-Audio Virtual Cable](https://vb-audio.com/Cable/)
-or [SteelSeries Sonar](https://steelseries.com/gg/sonar). TheBoard plays into
+or [SteelSeries Sonar](https://steelseries.com/gg/sonar). StreamBoard plays into
 that device, and the other program selects it as its microphone. Details are
 in [Virtual audio](#virtual-audio).
 
@@ -19,7 +19,7 @@ See [docs/DESIGN.md](docs/DESIGN.md) for the design notes.
 - `server/`: Rust server (axum): HTTP API, WebSocket, audio, actions. Serves the built UI.
 - `web/`: React + Vite + Tailwind UI.
 - `config/`: example config files.
-- `installer/`: Windows setup script. GitHub Actions compiles it into `TheBoard-Setup.exe`.
+- `installer/`: Windows setup script. GitHub Actions compiles it into `StreamBoard-Setup.exe`.
 
 ## Development
 
@@ -58,7 +58,7 @@ OBS has to be running with its websocket server enabled:
 
 1. In OBS, open **Tools → WebSocket Server Settings**.
 2. Enable the server. The default port is `4455`.
-3. In TheBoard, open **OBS** (or the tray item **OBS settings**) and enter the same host, port, and password. They are saved in `config.toml`:
+3. In StreamBoard, open **OBS** (or the tray item **OBS settings**) and enter the same host, port, and password. They are saved in `config.toml`:
 
 ```toml
 [obs]
@@ -99,7 +99,7 @@ shortcut can already contain the arguments an app needs.
 
 ## Running the server on Windows
 
-Download [TheBoard-Setup.exe](https://github.com/phbraz/deckboard/releases/latest)
+Download [StreamBoard-Setup.exe](https://github.com/phbraz/deckboard/releases/latest)
 and run it. That is the install. Details are in [Install](#install).
 
 The server also runs from a `soundboard-server.exe` you build yourself. Sounds
@@ -136,22 +136,22 @@ On Windows, files live in `%APPDATA%\soundboard\`. That folder holds
 
 ### Install
 
-Each push to `master` builds `TheBoard-Setup.exe` and attaches it to the
+Each push to `master` builds `StreamBoard-Setup.exe` and attaches it to the
 [latest release](https://github.com/phbraz/deckboard/releases/latest). The same
-file is on that workflow run as the artifact `TheBoard-Setup`. Inno Setup runs
+file is on that workflow run as the artifact `StreamBoard-Setup`. Inno Setup runs
 in that build. Running the downloaded setup is the whole install.
 
-Run `TheBoard-Setup.exe`. It installs for the current user into
-`%LocalAppData%\TheBoard` and adds:
+Run `StreamBoard-Setup.exe`. It installs for the current user into
+`%LocalAppData%\StreamBoard` and adds:
 
 - a desktop shortcut
 - a Start menu shortcut
-- a Startup shortcut, so TheBoard is in the tray after you sign in
+- a Startup shortcut, so StreamBoard is in the tray after you sign in
 - an uninstaller
 
 The tray icon is the purple board mark. **Open** (or a double-click) shows the
 board. **OBS settings** opens the connection form. **Quit** stops the server.
-Launching TheBoard again while it is already running opens the board in the
+Launching StreamBoard again while it is already running opens the board in the
 browser.
 
 The first time it listens on port 7878, Windows asks whether to allow it on
@@ -165,13 +165,13 @@ To compile the setup on a Windows machine while changing the installer, install
 powershell -ExecutionPolicy Bypass -File installer/build.ps1
 ```
 
-That writes `dist/TheBoard-Setup.exe`. The script builds the UI and the release
+That writes `dist/StreamBoard-Setup.exe`. The script builds the UI and the release
 exe first. The installer only copies the finished exe.
 
 ### Uninstall
 
-In Windows, open **Settings → Apps → Installed apps**, choose **TheBoard**, and
-uninstall it. The same uninstaller is in the Start menu under **TheBoard**.
+In Windows, open **Settings → Apps → Installed apps**, choose **StreamBoard**, and
+uninstall it. The same uninstaller is in the Start menu under **StreamBoard**.
 
 Uninstall removes the program, the desktop and Start menu shortcuts, and the
 Startup entry. Sounds, the board, and `config.toml` stay in
@@ -181,7 +181,7 @@ Startup entry. Sounds, the board, and `config.toml` stay in
 
 Speakers are enough when you only want the room to hear a sound. Discord, OBS,
 and other calls need a virtual device they can select as a microphone. Install
-one of these on the PC running TheBoard:
+one of these on the PC running StreamBoard:
 
 **SteelSeries Sonar.** Install SteelSeries GG and turn Sonar on. Set
 `audio.output` to the channel you want, such as `Sonar - Microphone`,
@@ -189,7 +189,7 @@ one of these on the PC running TheBoard:
 as the input device.
 
 **VB-Audio Virtual Cable.** Install [VB-CABLE](https://vb-audio.com/Cable/) and
-reboot if the installer asks you to. Set TheBoard's output to `CABLE Input`.
+reboot if the installer asks you to. Set StreamBoard's output to `CABLE Input`.
 In Discord or OBS, set the microphone to `CABLE Output`.
 
 ```toml

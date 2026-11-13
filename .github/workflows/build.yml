@@ -57,7 +57,7 @@ jobs:
           $install = Start-Process -FilePath $setup -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-' -Wait -PassThru
           if ($install.ExitCode -ne 0) { exit $install.ExitCode }
 
-      - name: Build TheBoard-Setup.exe
+      - name: Build StreamBoard-Setup.exe
         if: runner.os == 'Windows'
         shell: pwsh
         run: .\installer\build.ps1 -InstallerOnly
@@ -65,10 +65,10 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: runner.os == 'Windows'
         with:
-          name: TheBoard-Setup
-          path: dist/TheBoard-Setup.exe
+          name: StreamBoard-Setup
+          path: dist/StreamBoard-Setup.exe
 
-      - name: Publish TheBoard-Setup.exe
+      - name: Publish StreamBoard-Setup.exe
         if: runner.os == 'Windows' && github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
         shell: pwsh
         env:
@@ -78,14 +78,14 @@ jobs:
           if ($cargo -notmatch '(?m)^version\s*=\s*"([^"]+)"') { throw 'Could not read the version from server\Cargo.toml' }
           $version = $Matches[1]
           $tag = "v$version"
-          $setup = 'dist/TheBoard-Setup.exe'
-          $notes = "Run TheBoard-Setup.exe. It installs TheBoard for the current user and adds the tray icon plus Start menu, desktop, and Startup shortcuts."
+          $setup = 'dist/StreamBoard-Setup.exe'
+          $notes = "Run StreamBoard-Setup.exe. It installs StreamBoard for the current user and adds the tray icon plus Start menu, desktop, and Startup shortcuts."
           $PSNativeCommandUseErrorActionPreference = $false
           gh release view $tag --json tagName -q .tagName
           if ($LASTEXITCODE -eq 0) {
             gh release upload $tag $setup --clobber
           } else {
-            gh release create $tag $setup --title "TheBoard $version" --notes $notes
+            gh release create $tag $setup --title "StreamBoard $version" --notes $notes
           }
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
